@@ -1,4 +1,4 @@
-herename: Build YMusic Android APK
+name: Build YMusic Android APK
 
 on:
   workflow_dispatch:
