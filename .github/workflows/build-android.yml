@@ -51,4 +51,3 @@ jobs:
         with:
           name: YMusic-Debug-APK
           path: YMusic/androidApp/build/outputs/apk/debug/*.apk
-￼Enter
