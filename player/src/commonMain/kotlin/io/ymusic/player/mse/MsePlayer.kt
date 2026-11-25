@@ -7,6 +7,7 @@ import io.ymusic.dynamicengine.JsSourceProvider
 import io.ymusic.dynamicengine.SignedBundleRef
 import io.ymusic.dynamicengine.VerifiedBundle
 import io.ymusic.dynamicengine.embeddedPlayerJsSource
+import io.ymusic.dynamicengine.player.ContentPoRemint
 import io.ymusic.dynamicengine.player.DynamicEnginePlayer
 import io.ymusic.mse.MseVideoSurface
 import io.ymusic.player.AudioSessionSource
@@ -29,6 +30,7 @@ import io.ymusic.player.VideoSize
 import io.ymusic.player.WatchNextSeen
 import io.ymusic.player.YtEngine
 import io.ymusic.player.requireMainThread
+import io.ymusic.player.softenedLoudnessGain
 import io.ymusic.quickjs.QuickJsRuntime
 import io.ymusic.settings.SettingsStore
 import io.ymusic.ytmedia.proxy.LocalMediaProxy
@@ -40,7 +42,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CloseableCoroutineDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.IO
@@ -64,10 +65,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import projectcommon.error.TechnicalException
 import projectcommon.error.errorCode
 import projectcommon.json.boolOrNull
+import projectcommon.json.doubleOrNull
 import projectcommon.json.intOrNull
 import projectcommon.json.longOrNull
 import projectcommon.json.objectOrNull
@@ -104,6 +107,9 @@ class MsePlayer internal constructor(
     /** Fire-and-forget teardown of abandoned sessions; deliberately outlives [release]. */
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Serial, off the main thread: resting can wait on the decoder (Android's MediaCodec takes up to seconds to stop). */
+    private val videoRestDispatcher = Dispatchers.IO.limitedParallelism(1)
+
     private val _status = MutableStateFlow(
         PlaybackStatus(state = PlaybackState.Uninitialized(isInitializing = false)),
     )
@@ -137,6 +143,9 @@ class MsePlayer internal constructor(
         var player: DynamicEnginePlayer? = null
         var captionJob: Job? = null
 
+        /** The last video rest call; the host is destroyed only after it returns. */
+        var videoRestJob: Job? = null
+
         /** What this session has applied (JS + native audio); null until the first push, which sends everything. */
         var config: PlaybackConfig? = null
 
@@ -158,6 +167,12 @@ class MsePlayer internal constructor(
     /** Latest config from the caller. */
     private var config = PlaybackConfig()
 
+    /** base.js's loudness gain for the presenting format; scales [config]'s volume at the host, softened, under [PlaybackConfig.stableVolume]. */
+    private var loudnessGain = 1f
+
+    private fun hostVolume(config: PlaybackConfig): Float =
+        config.volume.coerceIn(0f, 1f) * (if (config.stableVolume) softenedLoudnessGain(loudnessGain) else 1f)
+
     private var loadingVideoId: String? = null
     private var loadedVideoId: String? = null
     private var loadTimeoutJob: Job? = null
@@ -166,7 +181,6 @@ class MsePlayer internal constructor(
     private var hasPendingVideoSurface = false
     private var viewportW: Int = 640
     private var viewportH: Int = 360
-    private var freshConfigNext = false
 
     /** A newer published player.js, downloaded and verified, waiting for the next session to boot it. */
     private val pendingPlayerJs = MutableStateFlow<VerifiedBundle?>(null)
@@ -178,15 +192,10 @@ class MsePlayer internal constructor(
         playerJs.published.conflate().collect { remote -> if (remote != null) download(remote) }
     }
 
-    /** The next session takes its player config from a new homepage scrape ([PlayerImpl] resets). */
-    override fun refreshOnNext() {
-        freshConfigNext = true
-    }
-
     override fun init() {
         requireMainThread()
         if (released || session != null) return
-        startSession("init")
+        startSession("init", freshConfig = false)
     }
 
     override fun reset() = reset("unspecified")
@@ -195,7 +204,7 @@ class MsePlayer internal constructor(
         requireMainThread()
         if (released) return
         tearDownSession("reset: $reason")
-        startSession("reset: $reason")
+        startSession("reset: $reason", freshConfig = true)
     }
 
     override fun load(
@@ -220,10 +229,18 @@ class MsePlayer internal constructor(
         loadingVideoId = source.videoId
         _progress.value = Progress(positionMs = startPositionMs)
         _status.update { it.copy(details = null) }
+        // base.js pushes the new video's gain once it picks a format; until then play at the user's volume.
+        if (source.videoId != loadedVideoId && loudnessGain != 1f) {
+            loudnessGain = 1f
+            if (hostLive()) videoSurface.setVolume(config.volume.coerceIn(0f, 1f))
+        }
         applySurfaceAudio(previous, config)
+        applySurfaceVideo(previous, config)
         val width = viewportW
         val height = viewportH
         if (captionChanged(previous, config)) send { applyCaptionConfig(it, config) }
+        // A session's first config re-pulls too: setConfig drops changes while player/init runs.
+        if (config.stableVolume != previous?.stableVolume) send { it.notifySettingsChanged() }
         val quality = config.preferVideoQuality.first.takeIf { it != VideoQualityState.AUDIO_ONLY }
         val trace = MseLoadTrace(
             source.videoId,
@@ -305,9 +322,10 @@ class MsePlayer internal constructor(
     override fun stop() {
         requireMainThread()
         if (released) return
-        when (_status.value.state) {
+        val state = _status.value.state
+        when (state) {
             is PlaybackState.Uninitialized -> return
-            is PlaybackState.Error -> {
+            is PlaybackState.Error -> if (state.error.needReset) {
                 tearDownSession("stop in error")
                 return
             }
@@ -318,7 +336,8 @@ class MsePlayer internal constructor(
         loadTimeoutJob?.cancel()
         loadTimeoutJob = null
         send { it.stop(log) }
-        _status.update { it.copy(state = PlaybackState.Idle, details = null) }
+        // The error stays on the session's state; the next load clears it.
+        if (state !is PlaybackState.Error) _status.update { it.copy(state = PlaybackState.Idle, details = null) }
         _progress.value = Progress()
     }
 
@@ -335,6 +354,7 @@ class MsePlayer internal constructor(
         activeSession.config = config
         activeSession.loop = loop
         applySurfaceAudio(previous, config)
+        applySurfaceVideo(previous, config)
         send { enginePlayer ->
             val previousQuality = previous?.preferVideoQuality?.first?.takeIf { it != VideoQualityState.AUDIO_ONLY }
                 ?: VideoQualityState.AUTO
@@ -348,6 +368,8 @@ class MsePlayer internal constructor(
                 enginePlayer.setSpeedPitch(config.speed.coerceIn(0.25f, 3f), config.pitchFactor.coerceIn(0.5f, 2f), log)
             }
             if (captionChanged(previous, config)) applyCaptionConfig(enginePlayer, config)
+            // player.js reads the setting itself; the store already holds the value this config came from.
+            if (config.stableVolume != previous?.stableVolume) enginePlayer.notifySettingsChanged()
         }
     }
 
@@ -363,16 +385,15 @@ class MsePlayer internal constructor(
         session?.player?.setVideoSurface(surface)
     }
 
-    /** Display hole in CSS pixels. YouTube Auto ABR uses this. Never report a hole shorter than 360. */
+    /**
+     * Display hole in CSS pixels; YouTube Auto ABR uses it × devicePixelRatio. No floor here: base.js
+     * raises the viewport it sends to at least 640x360 real pixels itself.
+     */
     fun setViewport(width: Int, height: Int) {
         requireMainThread()
         if (released) return
-        var holeWidth = width.coerceAtLeast(1)
-        var holeHeight = height.coerceAtLeast(1)
-        if (holeHeight < 360) {
-            holeWidth = (holeWidth * 360.0 / holeHeight).toInt().coerceAtLeast(1)
-            holeHeight = 360
-        }
+        val holeWidth = width.coerceAtLeast(1)
+        val holeHeight = height.coerceAtLeast(1)
         if (holeWidth == viewportW && holeHeight == viewportH) return
         viewportW = holeWidth
         viewportH = holeHeight
@@ -386,11 +407,19 @@ class MsePlayer internal constructor(
     override suspend fun requestPoToken(videoId: String): String =
         readyPlayer().mintContentPoToken(videoId, log)
 
+    override suspend fun remintPoToken(videoId: String): ContentPoRemint =
+        readyPlayer().remintContentPoToken(videoId, log)
+
     override fun pcmLevels(out: FloatArray): Int =
         if (!hostLive() || out.isEmpty()) 0 else videoSurface.pcmLevels(out)
 
     override fun presentedFrames(): Int =
         if (!hostLive()) 0 else videoSurface.presentedFrames()
+
+    override fun droppedFrames(): Int =
+        if (!hostLive()) 0 else videoSurface.droppedFrames()
+
+    override fun videoDecoder(): String? = if (!hostLive()) null else videoSurface.videoDecoder().ifEmpty { null }
 
     /** A closing session frees its native host off main, only after main has cleared its player. */
     private fun hostLive(): Boolean = !released && session?.player != null
@@ -426,8 +455,13 @@ class MsePlayer internal constructor(
     }
 
     /** Boot is a blocking eval on the engine thread; null (reported) when [source] will not boot. */
-    private suspend fun bootOrNull(engineThread: CoroutineDispatcher, source: String, failure: String): DynamicEnginePlayer? = try {
-        withContext(engineThread + NonCancellable) { buildPlayer(engineThread, source) }
+    private suspend fun bootOrNull(
+        engineThread: CoroutineDispatcher,
+        source: String,
+        failure: String,
+        onBuilt: (DynamicEnginePlayer) -> Unit,
+    ): DynamicEnginePlayer? = try {
+        withContext(engineThread + NonCancellable) { buildPlayer(engineThread, source).also(onBuilt) }
     } catch (error: CancellationException) {
         throw error
     } catch (error: Throwable) {
@@ -435,9 +469,10 @@ class MsePlayer internal constructor(
         null
     }
 
-    private fun startSession(reason: String) {
+    /** [freshConfig] re-scrapes the homepage: a reset session's held params may be the ones the server rejected. */
+    private fun startSession(reason: String, freshConfig: Boolean) {
         check(session == null) { "mse session already running" }
-        log?.log(Logger.Level.INFO, "mse session start ($reason) freshConfig=$freshConfigNext")
+        log?.log(Logger.Level.INFO, "mse session start ($reason) freshConfig=$freshConfig")
         _status.update { it.copy(state = PlaybackState.Uninitialized(isInitializing = true)) }
         val newSession = Session(SupervisorJob(mainScope.coroutineContext[Job]))
         session = newSession
@@ -447,27 +482,34 @@ class MsePlayer internal constructor(
             withContext(NonCancellable) { previousClose?.join() }
             ensureActive()
             val engineThread = newEngineThread()
-            var enginePlayer: DynamicEnginePlayer? = null
+            // Set from inside the boot: cancelling the session mid-boot discards withContext's result,
+            // and the runtime it built must still reach the finally.
+            var builtPlayer: DynamicEnginePlayer? = null
             try {
                 // A remote bundle that will not boot must not take playback down with it: the next
-                // one down boots. Each built player is assigned at once so it reaches the finally.
+                // one down boots.
+                var enginePlayer: DynamicEnginePlayer? = null
                 val fresh = pendingPlayerJs.getAndUpdate { null }
                 if (fresh != null) {
-                    enginePlayer = bootOrNull(engineThread, fresh.source, "player.js v${fresh.version} failed to boot, discarded")
+                    enginePlayer = bootOrNull(engineThread, fresh.source, "player.js v${fresh.version} failed to boot, discarded") {
+                        builtPlayer = it
+                    }
                     if (enginePlayer == null) rejectedPlayerJs.update { it + fresh.remote } else keep(fresh)
                 }
                 if (enginePlayer == null) {
                     enginePlayer = playerJs.getCached()?.let { (source, version) ->
-                        bootOrNull(engineThread, source, "player.js v$version failed to boot, using the embedded one")
+                        bootOrNull(engineThread, source, "player.js v$version failed to boot, using the embedded one") {
+                            builtPlayer = it
+                        }
                     }
                 }
                 if (enginePlayer == null) {
-                    enginePlayer = withContext(engineThread + NonCancellable) { buildPlayer(engineThread, playerJs.getEmbed().first) }
+                    enginePlayer = withContext(engineThread + NonCancellable) {
+                        buildPlayer(engineThread, playerJs.getEmbed().first).also { builtPlayer = it }
+                    }
                 }
                 newSession.player = enginePlayer
                 if (hasPendingVideoSurface) enginePlayer.setVideoSurface(pendingVideoSurface)
-                val freshConfig = freshConfigNext
-                freshConfigNext = false
                 withTimeoutOrNull(INIT_TIMEOUT_MS) { enginePlayer.init(log, viewportW, viewportH, freshConfig) }
                     ?: throw TechnicalException("E60066", "mse player/init not done within $INIT_TIMEOUT_MS ms")
                 listen(newSession, enginePlayer)
@@ -494,8 +536,8 @@ class MsePlayer internal constructor(
             } finally {
                 newSession.player = null
                 withContext(Dispatchers.Default + NonCancellable) {
-                    if (enginePlayer != null) closePlayerBounded(enginePlayer)
-                    closeEngineThread(engineThread)
+                    newSession.videoRestJob?.join()
+                    closeSessionEngine(builtPlayer, engineThread)
                 }
             }
         }
@@ -503,15 +545,21 @@ class MsePlayer internal constructor(
 
     /**
      * A wedged engine thread never runs its close hop, so the wait is bounded and the successor
-     * boots anyway. [CoroutineStart.UNDISPATCHED] so the close's engine-thread hop is already
-     * queued — ahead of [closeEngineThread] — by the time this suspends.
+     * boots anyway. The thread closes strictly after its runtime, wedged or not: a closed executor
+     * sends every coroutine still bound to it to Dispatchers.IO, into JS from several threads.
      */
-    private suspend fun closePlayerBounded(enginePlayer: DynamicEnginePlayer) {
-        val closeJob = cleanupScope.launch(start = CoroutineStart.UNDISPATCHED) {
+    private suspend fun closeSessionEngine(enginePlayer: DynamicEnginePlayer?, engineThread: CloseableCoroutineDispatcher) {
+        if (enginePlayer == null) {
+            closeEngineThread(engineThread)
+            return
+        }
+        val closeJob = cleanupScope.launch {
             try {
                 enginePlayer.close()
             } catch (error: Throwable) {
                 log?.log(Logger.Level.WARN, "mse close failed", error)
+            } finally {
+                closeEngineThread(engineThread)
             }
         }
         if (withTimeoutOrNull(ENGINE_CLOSE_TIMEOUT_MS) { closeJob.join() } == null) {
@@ -519,8 +567,7 @@ class MsePlayer internal constructor(
         }
     }
 
-    /** Queued work still drains, then the thread exits. Off main and not awaited: native `close`
-     *  blocks until the worker terminates, which a wedged engine thread never does. */
+    /** Off main and not awaited: native `close` blocks until the worker terminates. */
     private fun closeEngineThread(engineThread: CloseableCoroutineDispatcher) {
         cleanupScope.launch(Dispatchers.IO) {
             try {
@@ -580,9 +627,7 @@ class MsePlayer internal constructor(
             state = awaitSettled()
         }
         val enginePlayer = session?.player
-        // An error the last playback left behind (no reset needed) doesn't stop a request for another video.
-        val usable = state.readyToLoad || (state is PlaybackState.Error && !state.error.needReset)
-        if (!usable || enginePlayer == null) {
+        if (!state.readyToLoad || enginePlayer == null) {
             throw TechnicalException(
                 "E60034",
                 "mse engine not ready: $state",
@@ -598,8 +643,8 @@ class MsePlayer internal constructor(
     /** Native host audio; the host is per session, so [previous] is that session's last push. */
     private fun applySurfaceAudio(previous: PlaybackConfig?, config: PlaybackConfig) {
         if (!hostLive()) return
-        if (previous == null || config.volume != previous.volume) {
-            videoSurface.setVolume(config.volume.coerceIn(0f, 1f))
+        if (previous == null || config.volume != previous.volume || config.stableVolume != previous.stableVolume) {
+            videoSurface.setVolume(hostVolume(config))
         }
         if (previous == null ||
             config.eqBands != previous.eqBands ||
@@ -614,6 +659,14 @@ class MsePlayer internal constructor(
                 config.preampDb.coerceIn(-12f, 12f),
             )
         }
+    }
+
+    private fun applySurfaceVideo(previous: PlaybackConfig?, config: PlaybackConfig) {
+        if (!hostLive()) return
+        val activeSession = session ?: return
+        if (previous != null && config.videoHidden == previous.videoHidden) return
+        val hidden = config.videoHidden
+        activeSession.videoRestJob = cleanupScope.launch(videoRestDispatcher) { videoSurface.setVideoHidden(hidden) }
     }
 
     private fun captionChanged(previous: PlaybackConfig?, config: PlaybackConfig): Boolean =
@@ -695,7 +748,15 @@ class MsePlayer internal constructor(
         json.objectOrNull("state")?.let { applyState(it) }
         json.objectOrNull("picture")?.let { applyPicture(it) }
         json.objectOrNull("details")?.let { applyDetails(it) }
+        json.objectOrNull("gain")?.let { applyLoudnessGain(it) }
         json.objectOrNull("watchNext")?.let { applyWatchNext(it) }
+    }
+
+    private fun applyLoudnessGain(json: JsonObject) {
+        val gain = json.doubleOrNull("value")?.toFloat()?.coerceIn(0f, 1f) ?: return
+        if (gain == loudnessGain) return
+        loudnessGain = gain
+        if (hostLive()) videoSurface.setVolume(hostVolume(config))
     }
 
     private fun applyWatchNext(json: JsonObject) {
@@ -732,6 +793,8 @@ class MsePlayer internal constructor(
         } else if (videoId != loadedVideoId) {
             return
         }
+        // A failed video has no play-head until the next load resets the engine (see applyState).
+        if (_status.value.state is PlaybackState.Error) return
         val durationMs = json.longOrNull("duration") ?: json.longOrNull("durationMs") ?: 0L
         val seekableStartMs = json.longOrNull("seekableStartMs") ?: 0L
         val seekableEndMs = json.longOrNull("seekableEndMs") ?: 0L
@@ -772,6 +835,8 @@ class MsePlayer internal constructor(
         if (state is PlaybackState.Error) {
             loadTimeoutJob?.cancel()
             loadTimeoutJob = null
+            // Its last progress (an unplayable recording's length, say) must not stay up.
+            _progress.value = Progress()
         }
         _status.update { it.copy(state = state, live = live) }
     }
@@ -840,6 +905,7 @@ class MsePlayer internal constructor(
             cacheStore: CacheStore? = null,
             cookieJar: CookieJar = client.cookieJar,
             settings: SettingsStore? = null,
+            remoteFeature: (suspend (String) -> JsonElement?)? = null,
             videoSurface: MseVideoSurface,
             main: DynamicEngineManager,
             mediaProxy: LocalMediaProxy? = null,
@@ -855,6 +921,7 @@ class MsePlayer internal constructor(
                     cacheStore = cacheStore,
                     cookieJar = cookieJar,
                     settings = settings,
+                    remoteFeature = remoteFeature,
                     videoSurface = videoSurface,
                     main = main,
                     onBackendVersion = onPlayerJsVersion,

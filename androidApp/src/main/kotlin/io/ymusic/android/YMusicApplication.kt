@@ -4,24 +4,32 @@ import android.app.Activity
 import android.app.Application
 import android.app.UiModeManager
 import android.content.ComponentCallbacks2
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.SurfaceTexture
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.SystemClock
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.system.OsConstants
+import android.util.DisplayMetrics
+import android.view.Display
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.WebSettings
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.sentry.kotlin.multiplatform.Sentry
 import io.ymusic.download.DownloadChange
+import io.ymusic.download.DownloadFolderAccessException
 import io.ymusic.dynamicengine.CacheStore
 import io.ymusic.dynamicengine.DefaultJsSourceProvider
 import io.ymusic.dynamicengine.DynamicEngineManager
@@ -31,6 +39,7 @@ import io.ymusic.dynamicengine.JsSourceProvider
 import io.ymusic.dynamicengine.androidEngineCacheStore
 import io.ymusic.dynamicengine.player.bindMseNativeLogs
 import io.ymusic.dynamicengine.playerJsSource
+import io.ymusic.dynamicengine.yt.ytLoginStatus
 import io.ymusic.imageloader.DiskScaledImageCache
 import io.ymusic.imageloader.DiskVariantIndex
 import io.ymusic.imageloader.ImageLoader
@@ -38,6 +47,9 @@ import io.ymusic.imageloader.ImageSourceCache
 import io.ymusic.imageloader.defaultMemoryCacheBudget
 import io.ymusic.imageloader.fileFetcher
 import io.ymusic.imageloader.networkFetcher
+import io.ymusic.logstore.DbLogger
+import io.ymusic.logstore.LogStore
+import io.ymusic.logstore.androidLogDatabaseDriver
 import io.ymusic.mediascanner.DocumentInfo
 import io.ymusic.mediascanner.FfmpegMetadataExtractor
 import io.ymusic.mediascanner.MediaScanner
@@ -45,6 +57,7 @@ import io.ymusic.mediascanner.SafDocumentsProvider
 import io.ymusic.mediastore.BetterMediaStore
 import io.ymusic.mediastore.mediaStoreAndroidDriver
 import io.ymusic.mediastore.model.BucketDraft
+import io.ymusic.mse.MseDecoderCaps
 import io.ymusic.mse.MseVideoSurface
 import io.ymusic.player.LocalPlayerContext
 import io.ymusic.player.PlayableItem
@@ -56,6 +69,7 @@ import io.ymusic.player.createPlayer
 import io.ymusic.player.isPlaying
 import io.ymusic.player.mse.MsePlayer
 import io.ymusic.player.showsVideo
+import io.ymusic.quickjs.QuickJsRuntime
 import io.ymusic.remoteconfig.ApiService
 import io.ymusic.remoteconfig.HttpApiService
 import io.ymusic.remoteconfig.RemoteConfig
@@ -68,20 +82,27 @@ import io.ymusic.settings.put
 import io.ymusic.telemetry.SentryLogger
 import io.ymusic.telemetry.applyYMusicTelemetry
 import io.ymusic.telemetry.bindCrashReporting
+import io.ymusic.telemetry.bindErrorPolicy
+import io.ymusic.telemetry.bindSentryTags
 import io.ymusic.telemetry.captureFeedbackReport
+import io.ymusic.telemetry.installErrorLogs
 import io.ymusic.telemetry.installSentryDeviceId
 import io.ymusic.telemetry.installSentryEngineVersion
 import io.ymusic.telemetry.installSentryPlayerVersion
-import io.ymusic.telemetry.sendFeedbackMessage
+import io.ymusic.telemetry.installSentryRemoteTags
+import io.ymusic.telemetry.shareLogTraceWithSentry
 import io.ymusic.ui.APP_HTTP_TIMEOUT
+import io.ymusic.ui.AndroidInputMode
 import io.ymusic.ui.AppGraph
 import io.ymusic.ui.AppHttpClients
+import io.ymusic.ui.CookieSignInScreen
 import io.ymusic.ui.FolderWriteProblem
 import io.ymusic.ui.ScanResult
 import io.ymusic.ui.YtEngineSabrSpecResolver
 import io.ymusic.ui.bundleConfig
 import io.ymusic.ui.downloadLocationFolder
 import io.ymusic.ui.ensureAppLanguage
+import io.ymusic.ui.importSessionCookies
 import io.ymusic.ui.loaderYoutubeArt
 import io.ymusic.ui.mediaStoreArtFetcher
 import io.ymusic.ui.playhistory.PlayHistoryStore
@@ -89,6 +110,7 @@ import io.ymusic.ui.playhistory.playHistoryAndroidDriver
 import io.ymusic.ui.registerCompletedDownload
 import io.ymusic.ui.sponsorblock.SqliteSponsorBlockStore
 import io.ymusic.ui.sponsorblock.sponsorBlockAndroidDriver
+import io.ymusic.ytmedia.YOUTUBE_USER_AGENT
 import io.ymusic.ytmedia.cache.DiskMediaBlobCache
 import io.ymusic.ytmedia.cache.MediaCache
 import io.ymusic.ytmedia.cache.SqlDelightBlobIndex
@@ -96,6 +118,7 @@ import io.ymusic.ytmedia.cache.SqlDelightCacheStats
 import io.ymusic.ytmedia.cache.SqlDelightSegmentIndex
 import io.ymusic.ytmedia.cache.androidSegmentDatabaseDriver
 import io.ymusic.ytmedia.proxy.LocalMediaProxy
+import kmpcommon.WorkerThread
 import kmpcommon.log.Logger
 import kmpcommon.log.TeeLogger
 import kmpcommon.uri.Uri
@@ -104,31 +127,36 @@ import kmpffmpeg.metadata.FfmpegMetadataGetter
 import kmphttp.KmpHttpClient
 import kmphttp.RedirectOptions
 import kmphttp.create
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okio.FileSystem
 import okio.Path.Companion.toOkioPath
 import okio.Path.Companion.toPath
 import okio.sink
 import okio.source
-import projectcommon.log.FileLogger
-import projectcommon.log.LoggingWorker
+import projectcommon.error.TechnicalException
+import projectcommon.log.captureUnlessEnvironmental
 import java.io.File
 import java.lang.ref.WeakReference
+import kotlin.math.roundToInt
 
 /**
  * The PROCESS-scoped half of the app graph: everything that must exist exactly once no matter how
@@ -177,18 +205,20 @@ class YMusicApplication : Application() {
         if (activity != null) activity.startActivity(chooser) else startActivity(chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    /** Rotating file sink (`filesDir/logs/ymusic.log`, 5 MiB × 3). Lazy: needs [filesDir]. */
-    val logWorker: LoggingWorker by lazy { LoggingWorker(File(filesDir, "logs").toOkioPath()) }
+    /** The app log (`logs.db`): feedback export and the lines an error event sends. Lazy: needs a Context. */
+    val logStore: LogStore by lazy { LogStore(androidLogDatabaseDriver(this)) }
 
-    /** The app's root logger: file + Sentry (no-op until Sentry.init) teed with logcat. */
+    /** The app's root logger: the app log + Sentry events (no-op until Sentry.init), and logcat in debug builds only. */
     val rootLogger: Logger by lazy {
-        TeeLogger(FileLogger(logWorker), TeeLogger(SentryLogger(), LogcatLogger()))
-            .also { it.bindMseNativeLogs() }
+        TeeLogger(
+            DbLogger(logStore),
+            if (BuildConfig.DEBUG) TeeLogger(SentryLogger(), LogcatLogger()) else SentryLogger(),
+        ).also { it.bindMseNativeLogs() }
     }
 
     /** Escaped coroutine failures are still one job dying — capture, don't crash the process. */
     private fun uncaught(scopeName: String) = CoroutineExceptionHandler { _, e ->
-        rootLogger.fork(scopeName).fork("uncaught").captureError(e)
+        rootLogger.fork(scopeName).fork("uncaught").captureUnlessEnvironmental(e)
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + uncaught("app-default"))
@@ -199,12 +229,24 @@ class YMusicApplication : Application() {
     /** The home-screen player widgets; live once the graph is built. */
     val widgets: PlayerWidgets by lazy { PlayerWidgets(this, appScope, rootLogger.fork("widgets")) }
 
-    /** The current Activity's SAF folder pick, registered while it lives. The graph is app-scoped
-     *  but a pick needs an Activity; a scan is always user-driven, so one is up when this runs. */
-    @Volatile var folderPicker: (suspend () -> Uri?)? = null
+    /** The current Activity's folder pick (a SAF tree, or a `file://` folder where the device has no tree
+     *  picker), registered while it lives. The graph is app-scoped but a pick needs an Activity; a scan is
+     *  always user-driven, so one is up when this runs. `writable` = only a folder the app can write into may be
+     *  chosen (the download location). */
+    @Volatile var folderPicker: (suspend (writable: Boolean) -> Uri?)? = null
+
+    /** The picks [folderPicker] is waiting on; outlives the Activity that launched the picker. */
+    internal val folderPicks = FolderPicks()
 
     /** The current Activity's QR scan — same lifecycle as [folderPicker]. */
     @Volatile var qrScanner: (suspend () -> String?)? = null
+
+    /** The current Activity's voice search — same lifecycle as [folderPicker]. */
+    @Volatile internal var speechInput: AndroidSpeechInput? = null
+
+    private fun speechRecognitionAvailable(): Boolean =
+        packageManager.queryIntentActivities(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).isNotEmpty() ||
+            SpeechRecognizer.isRecognitionAvailable(this)
 
     /** The current Activity's PIN / biometric prompt — same lifecycle as [folderPicker]. */
     @Volatile var deviceOwnerAuth: (suspend (String, String) -> Boolean)? = null
@@ -233,7 +275,35 @@ class YMusicApplication : Application() {
     fun graphAsync(): Deferred<AppGraph> =
         builtGraph ?: appScope.async { buildGraph() }.also { builtGraph = it }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // A system language change resets the default locale before the Activity is recreated.
+        builtGraph?.takeIf { it.isCompleted && !it.isCancelled }?.getCompleted()?.reapplyUiLanguage()
+    }
+
+    /** Device facts every engine sees in `versions`: the real display for YouTube's quality cap, the
+     *  rest for device-specific fixes in a remote bundle. */
+    private fun hostVersions(): Map<String, Any> {
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION") // getRealMetrics: the whole display, which is what a browser's screen reports
+        getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)?.getRealMetrics(metrics)
+        return buildMap {
+            put("os", "android")
+            put("osVersion", Build.VERSION.RELEASE.orEmpty())
+            put("brand", Build.BRAND.orEmpty())
+            put("model", Build.MODEL.orEmpty())
+            if (metrics.widthPixels > 0 && metrics.heightPixels > 0 && metrics.density > 0f) {
+                put("screenWidth", metrics.widthPixels)
+                put("screenHeight", metrics.heightPixels)
+                put("screenDensity", metrics.density.toDouble())
+            }
+        }
+    }
+
     private suspend fun buildServices(): SharedServices {
+        MseDecoderCaps.start(rootLogger)
+        QuickJsRuntime.hostVersions = hostVersions()
         // YouTube + API cookies live in the WebView CookieManager (the login WebView writes
         // there; this jar is a wrapper so HTTP sees the same store).
         val cookies = WebViewCookieJar()
@@ -268,9 +338,15 @@ class YMusicApplication : Application() {
                     // Explicit and persisted: without it, ANR/tombstone events replayed by the next
                     // process take dist from the text after '+' in the release (the commit).
                     it.dist = BuildConfig.VERSION_CODE.toString()
-                    it.environment = if (BuildConfig.DEBUG) "debug" else "production"
+                    it.environment = if (BuildConfig.DEBUG) "debug" else BuildConfig.SENTRY_ENVIRONMENT
+                    // One trace per app open: no new trace per Activity, and no gesture listener on
+                    // every window (it cannot resolve Compose elements, so it only costs hooks).
+                    it.isEnableAutoTraceIdGeneration = false
+                    it.isEnableUserInteractionBreadcrumbs = false
                 }
                 installSentryDeviceId(deviceId)
+                installSentryRemoteTags()
+                shareLogTraceWithSentry()
             }
         }
 
@@ -281,6 +357,7 @@ class YMusicApplication : Application() {
             engineFloor = maxOf(BuildConfig.ENGINE_JS_VERSION.toInt(), settings.flow(AppSettings.lastLoadedEngineJsVer).value),
             playerFloor = maxOf(EMBEDDED_PLAYER_JS_VERSION.toInt(), settings.flow(AppSettings.lastLoadedPlayerJsVer).value),
         )
+        AndroidInputMode.init(this)
         val api = BuildConfig.REMOTE_CONFIG_URL.takeIf { it.isNotBlank() }?.let { baseUrl ->
             HttpApiService(
                 client = http.engine.newBuilder().apply {
@@ -296,6 +373,7 @@ class YMusicApplication : Application() {
                 // The device's preferred ABI, so the service can offer its split APK.
                 arch = android.os.Build.SUPPORTED_ABIS.firstOrNull(),
                 bundles = runningBundles,
+                formFactor = if (AndroidInputMode.isTelevision) "tv" else null,
             )
         }
         // Flags, the newest JS bundle revisions, and update availability. Started here so the first
@@ -308,6 +386,14 @@ class YMusicApplication : Application() {
             now = { System.currentTimeMillis() },
             log = rootLogger.fork("remote-config"),
         ).also { it.checkUpdate() } // app open is itself a hotpoint
+        installErrorLogs(logStore, remoteConfig, BuildConfig.VERSION_CODE)
+        bindErrorPolicy(appScope, remoteConfig, rootLogger.fork("error-policy"))
+        bindSentryTags(appScope, remoteConfig)
+        appScope.launch {
+            // The cap waits for the loaded config: the store trims nothing until it has one.
+            remoteConfig.awaitLoaded()
+            remoteConfig.features.collect { logStore.setMaxLines(it.logLines) }
+        }
         // Anonymous usage stats — held by SharedServices so the graph (and any screen) can
         // record events. The "Send anonymous stats" answer is read per event, so the Settings
         // switch applies live, and a disabled gate costs nothing.
@@ -327,7 +413,7 @@ class YMusicApplication : Application() {
         // config service publishes, which the manager follows from start.
         val engineSource = DefaultJsSourceProvider(
             client = http.engine,
-            config = remoteConfig.bundleConfig { it.engineJs },
+            config = remoteConfig.bundleConfig(remoteConfig.engineJs),
             name = ENGINE_BUNDLE,
             publicKey = BuildConfig.BUNDLE_PUBLIC_KEY,
             embedVersion = BuildConfig.ENGINE_JS_VERSION,
@@ -346,6 +432,7 @@ class YMusicApplication : Application() {
             cacheStore = cacheStore,
             cookieJar = cookies,
             settings = settings,
+            remoteFeature = { remoteConfig.awaitLoaded().features.getByKey(it) },
             // Debug builds crash on an engine-thread stall (StrictMode-style); release only logs.
             strictStints = BuildConfig.DEBUG,
             // Every Sentry event and service call names the engine-js bundle that was live (start + each swap).
@@ -377,11 +464,15 @@ class YMusicApplication : Application() {
                 imageNetworkFetcher,
                 fileFetcher(),
                 ffmpegBin?.let {
+                    val artLogger = rootLogger.fork("local-art")
                     mediaStoreArtFetcher(
                         FfmpegMetadataGetter(it, AndroidFfInputResolver(contentResolver)),
                         mediaStore,
                         loaderYoutubeArt { checkNotNull(loaderRef) },
+                        artLogger,
                         coverCache = ImageSourceCache(FileSystem.SYSTEM, cacheDir.resolve("image-cover-cache").toOkioPath(), 32L * 1024 * 1024),
+                        frameFallback = PlatformVideoFrameExtractor(this, artLogger),
+                        extractorVersion = BuildConfig.VERSION_CODE.toString(),
                     )
                 },
             ),
@@ -396,7 +487,7 @@ class YMusicApplication : Application() {
 
         val playerJs = playerJsSource(
             client = http.engine,
-            config = remoteConfig.bundleConfig { it.playerJs },
+            config = remoteConfig.bundleConfig(remoteConfig.playerJs),
             publicKey = BuildConfig.BUNDLE_PUBLIC_KEY,
             fileSystem = FileSystem.SYSTEM,
             directory = File(filesDir, "player-js").toOkioPath(),
@@ -415,8 +506,8 @@ class YMusicApplication : Application() {
             autoDownloadFailed = { settings.flow(AppSettings.updateAutoDownloadFailed).value },
             rememberAutoDownloadFailed = { settings.put(AppSettings.updateAutoDownloadFailed, it) },
             freshConfig = { remoteConfig.awaitFresh(timeoutMs = 3_000L) },
-            downloadSite = { remoteConfig.config.value.downloadPageUrl },
-            configUpdates = remoteConfig.config.map { it.appUpdate },
+            downloadSite = { remoteConfig.config.value.features.downloadPageUrl },
+            configUpdates = remoteConfig.appUpdate,
         )
         updates.pruneDownloads()
         return SharedServices(http, cookies, settings, engines, cacheStore, mediaStore, playerJs, imageLoader, stats, updates, api, remoteConfig, runningBundles)
@@ -459,7 +550,7 @@ class YMusicApplication : Application() {
                     }
                 }
         }
-        AudioFocusCoordinator(this, graph.player, graph.settings, appScope).start()
+        AudioFocusCoordinator(this, graph.player, graph.settings, appScope, rootLogger.fork("audio-focus")).start()
         SystemAudioEffects(this, graph.player, graph.settings, appScope, rootLogger.fork("system-audio-fx")).start()
         widgets.attach(graph)
         graph.pruneUngrantedFolders?.let { prune -> scope.launch { prune() } }
@@ -513,6 +604,7 @@ class YMusicApplication : Application() {
                 ),
                 SqlDelightSegmentIndex(driver, now = { System.currentTimeMillis() }),
                 SqlDelightCacheStats(driver),
+                logger = rootLogger.fork("player-cache"),
             )
         }
         val mediaProxyClient = KmpHttpClient.create {
@@ -524,10 +616,11 @@ class YMusicApplication : Application() {
         val mediaProxy = LocalMediaProxy(
             playerCache,
             mediaProxyClient,
-            userAgent = WebSettings.getDefaultUserAgent(applicationContext),
+            userAgent = YOUTUBE_USER_AGENT,
             logger = rootLogger,
             // Per-request media-path logging — debug builds only, it narrates the hot path.
             verbose = BuildConfig.DEBUG,
+            cacheEnabled = { shared.remoteConfig.config.value.features.playerCacheEnabled },
         )
 
         var ytEngine: io.ymusic.player.YtEngine? = null
@@ -543,6 +636,7 @@ class YMusicApplication : Application() {
                         cacheStore = shared.cacheStore,
                         cookieJar = shared.cookies,
                         settings = shared.settings,
+                        remoteFeature = { shared.remoteConfig.awaitLoaded().features.getByKey(it) },
                         videoSurface = MseVideoSurface(),
                         main = shared.engines,
                         mediaProxy = mediaProxy,
@@ -593,7 +687,7 @@ class YMusicApplication : Application() {
                 now = { System.currentTimeMillis() },
                 resolver = ytResolver,
                 client = sabrClient,
-                userAgent = WebSettings.getDefaultUserAgent(applicationContext),
+                userAgent = YOUTUBE_USER_AGENT,
                 ffmpeg = ffmpegBin?.let { bin -> io.ymusic.download.Ffmpeg(bin) },
                 // Handles file:// (app dirs) via okio and user-picked SAF folders (content://) via SAF.
                 // App data, not cacheDir (trimmed mid-download under storage pressure); no_backup keeps
@@ -610,9 +704,12 @@ class YMusicApplication : Application() {
                     androidSegmentDatabaseDriver(applicationContext, name = "download_segments.db"),
                     now = { System.currentTimeMillis() },
                 ),
-                // The user's chosen download location (SAF content:// or file://) — always set: the download
-                // flow requires picking one before enqueue.
-                downloadFolder = { shared.settings.downloadLocationFolder()!! },
+                // The user's chosen download location (SAF content:// or file://). The flow picks one before
+                // enqueue, yet queued tasks have run with none set (YMUSIC-KMP-7R).
+                downloadFolder = {
+                    shared.settings.downloadLocationFolder()
+                        ?: throw DownloadFolderAccessException("(none)", IllegalStateException("no download folder is set"))
+                },
                 onCompleted = { task, result ->
                     registerCompletedDownload(shared.mediaStore, shared.settings, downloadScanner, task, result)
                 },
@@ -622,6 +719,9 @@ class YMusicApplication : Application() {
         }
 
         val versionName = packageManager.getPackageInfo(packageName, 0).versionName
+        // Decided before the graph: a TV signs in through the phone (QR) rather than a WebView it cannot type into.
+        AndroidInputMode.init(this)
+        val television = AndroidInputMode.isTelevision
         return AppGraph(
             shared.engines,
             player,
@@ -634,7 +734,7 @@ class YMusicApplication : Application() {
             premium = premium,
             openDonation = {
                 resumedActivity?.get()?.let { activity ->
-                    SupportApp.openDonation(activity, shared.remoteConfig.config.value.donationUrl, rootLogger)
+                    SupportApp.openDonation(activity, shared.remoteConfig.config.value.features.donationUrl, rootLogger)
                 }
             },
             shareText = { text ->
@@ -649,8 +749,12 @@ class YMusicApplication : Application() {
             scanLibraryFolder = { onProgress -> scanPickedFolder(shared.mediaStore, onProgress) },
             libraryFolderPicker = { pickAndRegisterFolder(shared.mediaStore) },
             canWriteFolder = { uri ->
-                checkCallingOrSelfUriPermission(android.net.Uri.parse(uri), Intent.FLAG_GRANT_WRITE_URI_PERMISSION) ==
-                    PackageManager.PERMISSION_GRANTED
+                val parsed = android.net.Uri.parse(uri)
+                if (parsed.scheme == ContentResolver.SCHEME_FILE) {
+                    File(checkNotNull(parsed.path) { "file uri without a path: $uri" }).canWrite()
+                } else {
+                    checkCallingOrSelfUriPermission(parsed, Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED
+                }
             },
             probeDownloadFolder = { uri -> probeDownloadFolder(android.net.Uri.parse(uri)) },
             rescanLibrary = { folderUri, onProgress -> rescanKnownRoots(shared.mediaStore, folderUri, onProgress) },
@@ -658,9 +762,15 @@ class YMusicApplication : Application() {
             deleteFromDisk = { item ->
                 withContext(Dispatchers.IO) {
                     val uri = android.net.Uri.parse(item.uri.toString())
+                    if (uri.scheme == ContentResolver.SCHEME_FILE) {
+                        val file = File(checkNotNull(uri.path) { "file uri without a path: $uri" })
+                        if (!file.delete() && file.exists()) throw TechnicalException("E50009", "could not delete $file")
+                        return@withContext
+                    }
                     // Rides the persisted tree permission from the folder pick. A file that is already gone
                     // (or whose folder is) needs no delete: the caller still clears its library row.
                     if (!documentExists(uri)) return@withContext
+                    var refusal: IllegalStateException? = null
                     val deleted = try {
                         android.provider.DocumentsContract.deleteDocument(contentResolver, uri)
                     } catch (e: java.io.FileNotFoundException) {
@@ -668,9 +778,15 @@ class YMusicApplication : Application() {
                     } catch (e: IllegalArgumentException) {
                         if (documentExists(uri)) throw e
                         true
+                    } catch (e: IllegalStateException) {
+                        // The provider's own "Failed to delete" (read-only storage, a file it can't remove).
+                        refusal = e
+                        false
                     }
                     // Before Android 10 deleteDocument swallows the provider's exception into false.
-                    check(deleted || !documentExists(uri)) { "Android refused to delete this document" }
+                    if (!deleted && documentExists(uri)) {
+                        throw TechnicalException("E50007", "the document provider refused the delete", cause = refusal)
+                    }
                 }
             },
             appVersion = listOfNotNull(versionName, android.os.Build.SUPPORTED_ABIS.firstOrNull()).joinToString(" · "),
@@ -682,15 +798,36 @@ class YMusicApplication : Application() {
             loginBrowser = { url, userAgent, state, onPageChanged, modifier ->
                 AndroidLoginBrowser(url, userAgent, state, onPageChanged, modifier)
             },
+            cookieSignIn = if (!television) {
+                null
+            } else {
+                { onComplete, onBack ->
+                    CookieSignInScreen(
+                        api = shared.api,
+                        importCookies = { shared.cookies.importSessionCookies(it) },
+                        loginStatus = { shared.engines.ytLoginStatus() },
+                        logger = rootLogger,
+                        onComplete = onComplete,
+                        onBack = onBack,
+                    )
+                }
+            },
             exportSessionCookies = { shared.cookies.exportSessionCookies() },
             scanQrCode = { qrScanner?.invoke() },
+            speechToText = if (speechRecognitionAvailable()) {
+                {
+                    val appLanguage = shared.settings.string(AppSettings.uiLanguage.key, "").value
+                    speechInput?.listen(appLanguage) ?: emptyFlow()
+                }
+            } else {
+                null
+            },
             confirmDeviceOwner = { title, subtitle ->
                 val fn = deviceOwnerAuth ?: error("no-lock")
                 fn(title, subtitle)
             },
             downloads = downloadService,
             captureFeedbackReport = captureFeedbackReportAction.takeIf { BuildConfig.SENTRY_DSN.isNotEmpty() },
-            sendFeedbackMessage = ::sendFeedbackMessage.takeIf { BuildConfig.SENTRY_DSN.isNotEmpty() },
             platformInfo = listOfNotNull("Android ${android.os.Build.VERSION.RELEASE}", android.os.Build.SUPPORTED_ABIS.firstOrNull()).joinToString(" · "),
             createDocument = { name, mimeType ->
                 documentCreator?.invoke(name, mimeType)?.let { uri ->
@@ -714,9 +851,9 @@ class YMusicApplication : Application() {
             // (unlike Swing/UIKit), so adding the container directly throws "child already has a
             // parent". So each AndroidView gets its own empty host and re-parents the shared container
             // into whichever is active, detaching from the previous parent first.
-            val queue by player.queue.collectAsState()
-            val config by player.config.collectAsState()
-            val quality by player.videoQuality.collectAsState()
+            val queue by player.queue.collectAsStateWithLifecycle()
+            val config by player.config.collectAsStateWithLifecycle()
+            val quality by player.videoQuality.collectAsStateWithLifecycle()
             val showMse = queue.currentItem is PlayableItem.YtMedia && showsVideo(config, quality)
             AndroidView(
                 factory = { context -> FrameLayout(context) },
@@ -734,16 +871,24 @@ class YMusicApplication : Application() {
         }
     }
 
-    /** Sends the app logs as one anonymous Sentry report for the Feedback screen; returns its event id. */
-    private val captureFeedbackReportAction: suspend () -> String? = {
+    /** Sends the app logs as one anonymous Sentry report for the Feedback screen. */
+    private val captureFeedbackReportAction: suspend (String, String?) -> Unit = { subject, message ->
         withContext(Dispatchers.IO) {
-            runCatching { logWorker.flush() }
-                .onFailure { rootLogger.fork("feedback").log(Logger.Level.WARN, "log flush before feedback failed", it) }
-            captureFeedbackReport(
-                logWorker.filePaths().map { path ->
-                    io.sentry.kotlin.multiplatform.Attachment(path, path.substringAfterLast('/'), "text/plain")
-                },
-            )
+            val export = File(cacheDir, FEEDBACK_LOG_NAME)
+            // The report still goes without the log when the export fails or the log store is stuck.
+            val attachments = try {
+                withTimeoutOrNull(FEEDBACK_EXPORT_TIMEOUT_MS) { logStore.exportGzip(FileSystem.SYSTEM, export.toOkioPath()) }
+                    ?.let { listOf(io.sentry.kotlin.multiplatform.Attachment(export.path, FEEDBACK_LOG_NAME, "application/gzip")) }
+                    ?: emptyList<io.sentry.kotlin.multiplatform.Attachment>().also {
+                        rootLogger.fork("feedback").log(Logger.Level.WARN, "log export for feedback timed out")
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                rootLogger.fork("feedback").log(Logger.Level.WARN, "log export for feedback failed", e)
+                emptyList()
+            }
+            captureFeedbackReport(subject, message, attachments)
         }
     }
 
@@ -769,7 +914,15 @@ class YMusicApplication : Application() {
     /** Creates, writes and deletes a scratch file in [folder] — the steps a finished download takes. */
     private suspend fun probeDownloadFolder(folder: android.net.Uri): FolderWriteProblem? = withContext(Dispatchers.IO) {
         val log = rootLogger.fork("download-folder-probe", mapOf("folder" to folder.toString()))
+        if (folder.scheme == ContentResolver.SCHEME_FILE) {
+            return@withContext probeFileFolder(File(checkNotNull(folder.path) { "file uri without a path: $folder" }), log)
+        }
         if (checkCallingOrSelfUriPermission(folder, Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+            val persisted = contentResolver.persistedUriPermissions.firstOrNull { it.uri == folder }
+            log.log(
+                Logger.Level.WARN,
+                "no write grant (persisted read=${persisted?.isReadPermission} write=${persisted?.isWritePermission})",
+            )
             return@withContext FolderWriteProblem.NoPermission
         }
         val parent = if (android.provider.DocumentsContract.isDocumentUri(this@YMusicApplication, folder)) {
@@ -807,16 +960,57 @@ class YMusicApplication : Application() {
         }
     }
 
+    @WorkerThread
+    private fun probeFileFolder(folder: File, log: Logger): FolderWriteProblem? {
+        if (!folder.isDirectory) return FolderWriteProblem.Missing
+        // Named as audio: on scoped storage the folder decides which file types it accepts.
+        val probe = File(folder, ".ymusic-write-test.m4a")
+        return try {
+            java.io.FileOutputStream(probe).use { it.write(0) }
+            null
+        } catch (e: java.io.IOException) {
+            log.log(Logger.Level.WARN, "test file not writable", e)
+            val errno = (e.cause as? android.system.ErrnoException)?.errno
+            if (errno == OsConstants.EACCES || errno == OsConstants.EPERM || errno == OsConstants.EROFS) {
+                FolderWriteProblem.NoPermission
+            } else {
+                FolderWriteProblem.CannotCreateFiles
+            }
+        } finally {
+            if (probe.exists() && !probe.delete()) log.log(Logger.Level.WARN, "test file left behind")
+        }
+    }
+
     /** SAF folder pick + full scan into [store]; returns how it ended, or null when canceled. */
     private suspend fun scanPickedFolder(store: BetterMediaStore, onProgress: (Int) -> Unit): ScanResult? {
-        val treeUri = folderPicker?.invoke() ?: return null
+        val treeUri = folderPicker?.invoke(false) ?: return null
         return scanUris(store, listOf(treeUri), onProgress)
     }
 
     /** Pick a folder and register it as a Library bucket (no media scan — works even when empty),
      *  returning its uri. Used to choose a download location. */
     private suspend fun pickAndRegisterFolder(store: BetterMediaStore): String? {
-        val treeUri = folderPicker?.invoke() ?: return null
+        val treeUri = folderPicker?.invoke(true) ?: return null
+        return registerFolder(store, treeUri)
+    }
+
+    /** Applies a picked folder whose caller died with the old process: see [AppGraph.adoptPickedFolder]. */
+    fun adoptFolderPick(treeUri: android.net.Uri, writable: Boolean) {
+        appScope.launch {
+            val graph = graphAsync().await()
+            val uri = Uri.parse(treeUri.toString())
+            if (writable) {
+                val store = graph.mediaStore ?: return@launch
+                val registered = registerFolder(store, uri) ?: return@launch
+                graph.adoptPickedFolder(registered, asDownloadLocation = true)
+            } else {
+                graph.adoptPickedFolder(uri.toString(), asDownloadLocation = false)
+            }
+        }
+    }
+
+    /** Registers [treeUri] as a Library bucket (no scan), returning its uri; null when it doesn't read as a folder. */
+    private suspend fun registerFolder(store: BetterMediaStore, treeUri: Uri): String? {
         val folder = SafDocumentsProvider(applicationContext).queryDocument(treeUri) as? DocumentInfo.Folder ?: return null
         store.upsertBucket(BucketDraft(uri = folder.uri, name = folder.name))
         return folder.uri.toString()
@@ -918,6 +1112,7 @@ private class MseSurfaceBridge(private val textureView: TextureView, private val
         player = p
         pending?.let { p.setVideoSurface(MseVideoSurface(it)) }
         textureView.post {
+            reportViewport(textureView.width, textureView.height)
             textureView.removeCallbacks(watchdog)
             textureView.postDelayed(watchdog, WATCH_MS)
         }
@@ -927,6 +1122,13 @@ private class MseSurfaceBridge(private val textureView: TextureView, private val
         val st = texture ?: return
         if (tv.surfaceTexture === st) return
         runCatching { tv.setSurfaceTexture(st) }
+    }
+
+    /** The video hole in CSS pixels at the device density, which player.js reports after the BotGuard snapshot. */
+    private fun reportViewport(width: Int, height: Int) {
+        val density = textureView.resources.displayMetrics.density
+        if (width <= 0 || height <= 0 || density <= 0f) return
+        player?.setViewport((width / density).roundToInt(), (height / density).roundToInt())
     }
 
     private fun checkFrames() {
@@ -957,6 +1159,7 @@ private class MseSurfaceBridge(private val textureView: TextureView, private val
 
     val listener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
+            reportViewport(w, h)
             if (texture == null) {
                 texture = st
                 pending = Surface(st)
@@ -969,7 +1172,7 @@ private class MseSurfaceBridge(private val textureView: TextureView, private val
             }
         }
 
-        override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = Unit
+        override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = reportViewport(w, h)
 
         override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
             /* false = we own the SurfaceTexture; MediaCodec stays bound across reparent. */
@@ -985,3 +1188,6 @@ private class MseSurfaceBridge(private val textureView: TextureView, private val
         const val WATCH_MS = 2000L
     }
 }
+
+private const val FEEDBACK_LOG_NAME = "ymusic-log.txt.gz"
+private const val FEEDBACK_EXPORT_TIMEOUT_MS = 15_000L

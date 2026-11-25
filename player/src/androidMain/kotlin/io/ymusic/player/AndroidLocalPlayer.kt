@@ -99,6 +99,7 @@ internal class AndroidLocalPlayer(
 
     private var released = false
     private var audioOnly = false
+    private var videoHidden = false
     private var preferVideoQuality = VideoQualityState.AUTO
 
     /** The last-applied config; [setConfig] diffs against it so only changed fields re-touch ExoPlayer. */
@@ -109,16 +110,27 @@ internal class AndroidLocalPlayer(
     private val surfaceView: SurfaceView? = rootView?.let { SurfaceView(it.context) }
     private val subtitleView: SubtitleView? = rootView?.let { SubtitleView(it.context) }
 
+    /** The next item that failed, and its error, published when that item is loaded. */
+    private var preloadError: Pair<MediaItem, PlayerError>? = null
+
     // Audio-track id → its (group, index) for TrackSelectionOverride, refreshed on onTracksChanged.
     private val audioGroups = mutableMapOf<String, Pair<Tracks.Group, Int>>()
 
     init {
         _audioSessionId.value = player.audioSessionId
         player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) = syncFromPlayer(playbackState)
-            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                syncFromPlayer(player.playbackState)
-                snapshotProgress()
+            override fun onEvents(player: Player, events: Player.Events) {
+                if (events.containsAny(
+                        Player.EVENT_PLAYBACK_STATE_CHANGED,
+                        Player.EVENT_PLAY_WHEN_READY_CHANGED,
+                        Player.EVENT_PLAYER_ERROR,
+                        Player.EVENT_POSITION_DISCONTINUITY,
+                        Player.EVENT_TIMELINE_CHANGED,
+                    )
+                ) {
+                    syncFromPlayer()
+                }
+                if (events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)) snapshotProgress()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -134,18 +146,6 @@ internal class AndroidLocalPlayer(
                         )
                     }
                 }
-            }
-
-            override fun onPlayerError(error: PlaybackException) {
-                val detail = error.errorCodeName + ": " + error.message
-                val playerError = if (error.isFileMissing()) {
-                    PlayerError(PlayerError.FILE_MISSING, detail, canRetry = false, cause = error)
-                } else if (error.isAccessDenied()) {
-                    PlayerError(PlayerError.FOLDER_ACCESS_LOST, detail, canRetry = false, cause = error)
-                } else {
-                    PlayerError("E60010", detail, cause = error)
-                }
-                _status.update { it.copy(state = PlaybackState.Error(playerError)) }
             }
 
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -228,10 +228,17 @@ internal class AndroidLocalPlayer(
 
     override fun load(source: PlayableItem.LocalMedia, startPositionMs: Long, playWhenReady: Boolean, config: PlaybackConfig) {
         if (released) return
-        val uri = source.uri
+        val uri = source.uri.toPlayableUri()
+        val failedPreload = preloadError
+        preloadError = null
+        if (failedPreload != null && failedPreload.first.localConfiguration?.uri == uri) {
+            failLoad(failedPreload.second)
+            return
+        }
         // Apply config before prepare so the first frame is already at the right settings.
         appliedConfig = config
         audioOnly = config.audioOnly
+        videoHidden = config.videoHidden
         preferVideoQuality = config.preferVideoQuality.first
         player.volume = config.volume.coerceIn(0f, 1f)
         player.playbackParameters = PlaybackParameters(
@@ -240,14 +247,14 @@ internal class AndroidLocalPlayer(
         )
         applyColor(config)
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, config.audioOnly)
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, config.audioOnly || config.videoHidden)
             .build()
         applyCaptions(config)
         _status.update {
             it.copy(state = PlaybackState.Prepared(playWhenReady, buffering = true, ended = false))
         }
         _progress.value = Progress(positionMs = startPositionMs)
-        val mediaItem = MediaItem.fromUri(uri.toPlayableUri())
+        val mediaItem = MediaItem.fromUri(uri)
         var preloaded = false
         val count = player.mediaItemCount
         if (player.playbackState != Player.STATE_IDLE && count > 0) {
@@ -264,37 +271,62 @@ internal class AndroidLocalPlayer(
                 }
             }
         }
-        if (!preloaded) player.setMediaItem(mediaItem, startPositionMs)
+        if (!preloaded) {
+            try {
+                player.setMediaItem(mediaItem, startPositionMs)
+            } catch (refused: Exception) {
+                failLoad(refusedItemError(refused))
+                return
+            }
+        }
         player.repeatMode = if (config.loop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         player.playWhenReady = playWhenReady
         if (player.playbackState == Player.STATE_IDLE) player.prepare()
         showSurface(true)
     }
 
+    private fun refusedItemError(refused: Exception) =
+        PlayerError("E60015", refused.message, canRetry = false, cause = refused)
+
+    /** The item never loaded, so the player may still hold the previous one, possibly playing. */
+    private fun failLoad(error: PlayerError) {
+        _status.update { it.copy(state = PlaybackState.Error(error)) }
+        player.stop()
+        player.clearMediaItems()
+        _progress.value = Progress()
+        showSurface(false)
+    }
+
     override fun preload(source: PlayableItem.LocalMedia?) {
         if (released) return
         val mediaItem = source?.let { MediaItem.fromUri(it.uri.toPlayableUri()) }
-        when (val count = player.mediaItemCount) {
-            0 -> {
-                mediaItem ?: return
-                player.playWhenReady = false
-                player.addMediaItem(mediaItem)
-                player.prepare()
-            }
-            1 -> {
-                mediaItem ?: return
-                player.addMediaItem(mediaItem)
-            }
-            2 -> {
-                if (mediaItem == null) {
-                    player.removeMediaItem(1)
-                    return
+        val count = player.mediaItemCount
+        check(count <= 2) { "unexpected media item count $count" }
+        try {
+            when (count) {
+                0 -> {
+                    mediaItem ?: return
+                    player.playWhenReady = false
+                    player.addMediaItem(mediaItem)
+                    player.prepare()
                 }
-                if (!sameUri(player.getMediaItemAt(1), mediaItem)) {
-                    player.replaceMediaItem(1, mediaItem)
+                1 -> {
+                    mediaItem ?: return
+                    player.addMediaItem(mediaItem)
+                }
+                else -> {
+                    if (mediaItem == null) {
+                        player.removeMediaItem(1)
+                        return
+                    }
+                    if (!sameUri(player.getMediaItemAt(1), mediaItem)) {
+                        player.replaceMediaItem(1, mediaItem)
+                    }
                 }
             }
-            else -> error("unexpected media item count $count")
+        } catch (refused: Exception) {
+            if (count == 2) player.removeMediaItem(1)
+            if (mediaItem != null) preloadError = mediaItem to refusedItemError(refused)
         }
     }
 
@@ -315,6 +347,7 @@ internal class AndroidLocalPlayer(
 
     override fun stop() {
         if (released) return
+        preloadError = null
         player.stop()
         player.clearMediaItems()
         _progress.value = Progress()
@@ -341,8 +374,13 @@ internal class AndroidLocalPlayer(
         ) {
             applyColor(config)
         }
-        if (config.preferVideoQuality.first != prev.preferVideoQuality.first) {
+        if (config.preferVideoQuality.first != prev.preferVideoQuality.first || config.audioOnly != prev.audioOnly) {
             applyVideoQuality(config.preferVideoQuality.first)
+        } else if (config.videoHidden != prev.videoHidden) {
+            videoHidden = config.videoHidden
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, audioOnly || videoHidden)
+                .build()
         }
         if (config.preferCaptionLanguage.first != prev.preferCaptionLanguage.first ||
             config.captionVisible != prev.captionVisible
@@ -356,11 +394,12 @@ internal class AndroidLocalPlayer(
 
     private fun applyVideoQuality(quality: String) {
         preferVideoQuality = quality
-        val ao = quality == VideoQualityState.AUDIO_ONLY
+        val ao = appliedConfig.audioOnly || quality == VideoQualityState.AUDIO_ONLY
         audioOnly = ao
+        videoHidden = appliedConfig.videoHidden
         val height = VideoQualityState.heightForQuality(quality)
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, ao)
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, ao || videoHidden)
             .apply { if (height != null) setMaxVideoSize(Int.MAX_VALUE, height) else clearVideoSizeConstraints() }
             .build()
         _status.update { it.copy(videoSize = if (ao) null else it.videoSize) }
@@ -461,20 +500,25 @@ internal class AndroidLocalPlayer(
         _status.update { it.copy(state = PlaybackState.Uninitialized(isInitializing = false)) }
     }
 
-    private fun syncFromPlayer(playbackState: Int) {
-        if (player.currentMediaItemIndex == 1 && playbackState != Player.STATE_IDLE) return
-        val mapped = when (playbackState) {
-            Player.STATE_IDLE -> PlaybackState.Idle
-            Player.STATE_BUFFERING -> PlaybackState.Prepared(player.playWhenReady, buffering = true, ended = false)
-            Player.STATE_READY -> PlaybackState.Prepared(player.playWhenReady, buffering = false, ended = false)
-            Player.STATE_ENDED -> PlaybackState.Prepared(playWhenReady = false, buffering = false, ended = true)
+    private fun syncFromPlayer() {
+        // playerError outlives stop() and clearMediaItems(): only prepare() clears it.
+        val failure = player.playerError.takeIf { player.mediaItemCount > 0 }?.toPlayerError()
+        if (player.currentMediaItemIndex == PRELOAD_INDEX) {
+            // Not loaded yet: the current item has ended, and a failure here waits for this item's load.
+            if (failure != null) preloadError = player.getMediaItemAt(PRELOAD_INDEX) to failure
+            return
+        }
+        val mapped = when {
+            failure != null -> PlaybackState.Error(failure)
+            player.playbackState == Player.STATE_BUFFERING ->
+                PlaybackState.Prepared(player.playWhenReady, buffering = true, ended = false)
+            player.playbackState == Player.STATE_READY ->
+                PlaybackState.Prepared(player.playWhenReady, buffering = false, ended = false)
+            player.playbackState == Player.STATE_ENDED ->
+                PlaybackState.Prepared(playWhenReady = false, buffering = false, ended = true)
             else -> PlaybackState.Idle
         }
-        _status.update {
-            it.copy(
-                state = if (it.state is PlaybackState.Error) it.state else mapped,
-            )
-        }
+        _status.update { it.copy(state = if (it.state is PlaybackState.Error) it.state else mapped) }
         _progress.update { it.copy(durationMs = durationOrUnknown()) }
     }
 
@@ -528,17 +572,44 @@ internal class AndroidLocalPlayer(
 private fun String.toPlayableUri(): Uri =
     if (contains("://")) Uri.parse(this) else Uri.fromFile(java.io.File(this))
 
+/** The playlist slot [AndroidLocalPlayer.preload] fills with the next item. */
+private const val PRELOAD_INDEX = 1
+
 private fun sameUri(a: MediaItem, b: MediaItem): Boolean =
     a.localConfiguration?.uri == b.localConfiguration?.uri
 
-/** ExoPlayer's own not-found code, a [FileNotFoundException] anywhere in the chain, or the documents
- *  provider's IllegalArgumentException ("Failed to determine if … is child of …: java.io.FileNotFoundException")
- *  that carries it only in its message — the cause doesn't survive the binder. */
+private fun PlaybackException.toPlayerError(): PlayerError {
+    val detail = "$errorCodeName: $message"
+    return when {
+        isFileMissing() -> PlayerError(PlayerError.FILE_MISSING, detail, canRetry = false, cause = this)
+        isAccessDenied() -> PlayerError(PlayerError.FOLDER_ACCESS_LOST, detail, canRetry = false, cause = this)
+        else -> PlayerError(localErrorCode(), detail, cause = this)
+    }
+}
+
 private fun PlaybackException.isAccessDenied(): Boolean =
     generateSequence<Throwable>(this) { it.cause }.any { it is SecurityException }
 
 private fun PlaybackException.isFileMissing(): Boolean =
     errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND ||
-        generateSequence<Throwable>(this) { it.cause }.any {
-            it is FileNotFoundException || (it is IllegalArgumentException && it.message?.contains("FileNotFoundException") == true)
-        }
+        generateSequence<Throwable>(this) { it.cause }.any { it is FileNotFoundException || it.isProviderFileNotFound() }
+
+/** A provider's not-found failure as it crosses the binder: the cause is lost, only the exception type and message
+ *  survive. Matches only the provider texts seen in reports, so an unrelated runtime failure keeps its code. */
+private fun Throwable.isProviderFileNotFound(): Boolean {
+    val text = message ?: return false
+    return when (this) {
+        is IllegalArgumentException -> "FileNotFoundException" in text
+        is IllegalStateException -> "File has no filepath" in text || "FileNotFoundException: No item at" in text
+        else -> false
+    }
+}
+
+/** ExoPlayer's error code ranges: 3xxx parsing, 4xxx decoding, 5xxx audio output. */
+private fun PlaybackException.localErrorCode(): String = when (errorCode) {
+    in 4000..4999 -> "E60011"
+    in 3000..3999 -> "E60012"
+    in 5000..5999 -> "E60013"
+    PlaybackException.ERROR_CODE_TIMEOUT -> "E60014"
+    else -> "E60010"
+}

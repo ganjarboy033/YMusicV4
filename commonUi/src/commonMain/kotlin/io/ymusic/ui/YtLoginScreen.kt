@@ -88,6 +88,7 @@ import org.jetbrains.compose.resources.stringResource
 import projectcommon.error.Playability
 import projectcommon.error.errorCode
 import projectcommon.error.runSuspendCatching
+import projectcommon.log.captureUnlessEnvironmental
 
 /**
  * The observable state of the login browser — the shell's [LoginBrowser] writes it, the login chrome
@@ -239,7 +240,7 @@ internal class AccountController(
             // The UI flips to signed-out either way (the user asked to leave), but a failed engine
             // logout leaves the jar authenticated — that mismatch must reach telemetry.
             runSuspendCatching { graph.engines.ytLogout() }
-                .onFailure { log?.captureError(it, "logout failed — jar may stay authenticated") }
+                .onFailure { log?.captureUnlessEnvironmental(it, "logout failed — jar may stay authenticated") }
             log?.log(Logger.Level.INFO, "DBG ytLogout returned")
             // Re-scrape anonymous so the account identifiers drop out of subsequent requests.
             runSuspendCatching { graph.engines.ytRefreshSession() }
@@ -279,7 +280,7 @@ internal fun YtLoginScreen(
         entryUrl = runSuspendCatching {
             if (switchAccount) graph.engines.ytSwitchAccountUrl() else graph.engines.ytLoginUrl()
         }.onFailure {
-            graph.logger?.fork("login")?.captureError(it, "login entry url failed — blank login screen")
+            graph.logger?.fork("login")?.captureUnlessEnvironmental(it, "login entry url failed — blank login screen")
         }
             .getOrNull()
     }
@@ -310,7 +311,7 @@ internal fun YtLoginScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(DesignColors.Surface)) {
+    Column(Modifier.fillMaxSize().background(DesignColors.Surface).padding(bottom = LocalMiniPlayerInset.current)) {
         LoginChrome(state, onBack = onBack)
         var hintDismissed by remember { mutableStateOf(false) }
         if (switchAccount && !hintDismissed) {
@@ -341,11 +342,11 @@ internal fun YtVerifyScreen(graph: AppGraph, state: LoginWebViewState, onDone: (
         runSuspendCatching { graph.engines.ytVerifyTarget() }
             .onSuccess { target = it }
             .onFailure {
-                graph.logger?.fork("verify")?.captureError(it, "verify target failed")
+                graph.logger?.fork("verify")?.captureUnlessEnvironmental(it, "verify target failed")
                 failedCode = it.errorCode() ?: "E20147"
             }
     }
-    Column(Modifier.fillMaxSize().background(DesignColors.Surface)) {
+    Column(Modifier.fillMaxSize().background(DesignColors.Surface).padding(bottom = LocalMiniPlayerInset.current)) {
         // A double tap must not pop the layer underneath too.
         var finished by remember { mutableStateOf(false) }
         val finish = {
@@ -458,7 +459,7 @@ internal fun LoginPreface(onSignIn: () -> Unit) {
         val centerVertically = maxWidth >= 840.dp && maxHeight >= 600.dp
         val viewportHeight = maxHeight
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = LocalMiniPlayerInset.current),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
@@ -514,6 +515,7 @@ internal fun LoginPreface(onSignIn: () -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .background(DesignColors.Accent, RoundedCornerShape(8.dp))
+                        .focusRing(RoundedCornerShape(8.dp))
                         .clickable(onClick = onSignIn)
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center,

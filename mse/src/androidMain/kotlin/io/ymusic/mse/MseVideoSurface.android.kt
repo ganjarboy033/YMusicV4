@@ -11,6 +11,10 @@ actual class MseVideoSurface(val surface: Surface? = null) {
 
     actual fun presentedFrames(): Int = if (host == 0L) 0 else MseHostNative.frames(host)
 
+    actual fun droppedFrames(): Int = if (host == 0L) 0 else MseHostNative.droppedFrames(host)
+
+    actual fun videoDecoder(): String = if (host == 0L) "" else MseHostNative.videoDecoder(host)
+
     actual fun setVolume(volume: Float) {
         if (host == 0L) return
         MseHostNative.setVolume(host, volume)
@@ -31,6 +35,11 @@ actual class MseVideoSurface(val surface: Surface? = null) {
 
     actual fun pcmLevels(out: FloatArray): Int =
         if (host == 0L || out.isEmpty()) 0 else MseHostNative.pcmLevels(host, out)
+
+    actual fun setVideoHidden(hidden: Boolean) {
+        if (host == 0L) return
+        MseHostNative.setVideoHidden(host, hidden)
+    }
 
     actual fun audioSessionId(): Int = if (host == 0L) 0 else MseHostNative.audioSessionId(host)
 

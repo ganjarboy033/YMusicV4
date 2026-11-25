@@ -2,9 +2,21 @@ package io.ymusic.remoteconfig
 
 import io.ymusic.remoteconfig.AppUpdate.Companion.value
 import io.ymusic.remoteconfig.BundleVersion.Companion.value
+import io.ymusic.remoteconfig.Features.Companion.value
 import kmphttp.json.JsonWriter
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.longOrNull
+import projectcommon.json.arrayOrNull
 import projectcommon.json.boolOrNull
+import projectcommon.json.doubleOrNull
 import projectcommon.json.int
 import projectcommon.json.intOrNull
 import projectcommon.json.long
@@ -110,7 +122,117 @@ data class AppUpdate(
 }
 
 /**
- * The answer from `GET /v1/config`.
+ * The service's `features` object, every key kept as sent so it survives the disk cache and engine JS
+ * can read it through [getByKey]. Each value this build uses is a property here, with its default;
+ * see [RemoteConfigData].
+ */
+class Features(private val flags: JsonObject = EMPTY_JSON) {
+    val variableA: Int get() = flags.intOrNull("variableA") ?: 0
+    val featureX: Boolean get() = flags.boolOrNull("featureX") ?: false
+
+    /** The drawer's "Telegram announcements" link; null = the app's built-in one. */
+    val telegramUrl: String? get() = flags.stringOrNull("telegramUrl")
+
+    /** Settings › About's "Changelog" link; null hides the row (the "updated" notice uses the app's built-in one). */
+    val changelogUrl: String? get() = flags.stringOrNull("changelogUrl")
+
+    /** The drawer header's website link; null = the app's built-in one. */
+    val websiteUrl: String? get() = flags.stringOrNull("websiteUrl")
+
+    /** The Feedback screen's email address; null = the app's built-in one. */
+    val feedbackEmail: String? get() = flags.stringOrNull("feedbackEmail")
+
+    /** The Feedback screen's "new issue" page (the info is added as a `body` query parameter); null = the app's built-in one. */
+    val feedbackIssueUrl: String? get() = flags.stringOrNull("feedbackIssueUrl")
+
+    /** Settings › About's "Source code" link; null = the app's built-in one. */
+    val sourceCodeUrl: String? get() = flags.stringOrNull("sourceCodeUrl")
+
+    /** Settings › About's "Terms" link; null = the app's built-in one. */
+    val termsUrl: String? get() = flags.stringOrNull("termsUrl")
+
+    /** Where "Donate" opens when the supporter app isn't installed; null = its store page. */
+    val donationUrl: String? get() = flags.stringOrNull("donationUrl")
+
+    /** The official download site, where a failed or impossible in-app update sends the user. */
+    val downloadPageUrl: String? get() = flags.stringOrNull("downloadPageUrl")
+
+    /** How many of the newest log lines an error event sends along; 0 = none. */
+    val errorLogLines: Int get() = flags.intOrNull("errorLogLines") ?: 500
+
+    /** How many lines the app log keeps (trimmed once 10% over). */
+    val logLines: Int get() = flags.intOrNull("logLines") ?: 5_000
+
+    /** The share of non-fatal errors (`captureError`) sent to Sentry, 0–1; crashes always go. */
+    val errorSampleRate: Double get() = flags.doubleOrNull("errorSampleRate") ?: 1.0
+
+    /** Regexes over an error's "Type: message"; a match keeps a non-fatal error in the local log only. */
+    val errorFilters: List<String>
+        get() = flags.arrayOrNull("errorFilters").orEmpty()
+            .mapNotNull { (it as? JsonPrimitive)?.takeIf { primitive -> primitive.isString }?.content }
+
+    /**
+     * The apps trusted to show the system folder picker (`ACTION_OPEN_DOCUMENT_TREE`), comma-separated. Some builds
+     * register a dummy for that intent that shows nothing; a device with none of these takes YMusic's own fallback.
+     */
+    val safPickerPackages: List<String>
+        get() = (flags.stringOrNull("safPickerPackages") ?: "com.google.android.documentsui,com.android.documentsui")
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+    /** Android 11+ without a system folder picker: the package of the YMusic Files helper; "" = no helper. */
+    val safHelperPackage: String get() = flags.stringOrNull("safHelperPackage") ?: "io.ymusic.android.saf"
+
+    /** Where the user downloads that helper (they install it themselves); "" = no helper. */
+    val safHelperUrl: String get() = flags.stringOrNull("safHelperUrl") ?: "https://github.com/ymusic-io/android-saf/releases"
+
+    /** The oldest helper versionCode this build accepts; an older install is sent to [safHelperUrl] to update. */
+    val safHelperMinVersion: Long get() = flags.longOrNull("safHelperMinVersion") ?: 1L
+
+    /** Whether playback reads and fills the player cache; downloads still reuse what it holds. */
+    val playerCacheEnabled: Boolean get() = flags.boolOrNull("playerCacheEnabled") ?: true
+
+    fun getByKey(key: String): JsonElement? = flags[key]
+
+    override fun equals(other: Any?): Boolean = other is Features && flags == other.flags
+
+    override fun hashCode(): Int = flags.hashCode()
+
+    override fun toString(): String = "Features($flags)"
+
+    companion object {
+        fun JsonWriter.value(data: Features): JsonWriter = element(data.flags)
+    }
+}
+
+private val EMPTY_JSON = JsonObject(emptyMap())
+
+private fun JsonWriter.element(element: JsonElement): JsonWriter {
+    when (element) {
+        is JsonObject -> {
+            beginObject()
+            element.forEach { (key, child) -> name(key).element(child) }
+            endObject()
+        }
+        is JsonArray -> {
+            beginArray()
+            element.forEach { element(it) }
+            endArray()
+        }
+        JsonNull -> nullValue()
+        is JsonPrimitive -> when {
+            element.isString -> value(element.content)
+            element.booleanOrNull != null -> value(element.boolean)
+            element.longOrNull != null -> value(element.long)
+            else -> value(element.double)
+        }
+    }
+    return this
+}
+
+/**
+ * The answer from `GET /v1/config`, in its wire shape.
  *
  * Every field has a default and unknown ones are skipped, so the service can add a flag without
  * breaking a client that predates it, and a client can be built against a field the deployed service
@@ -118,50 +240,21 @@ data class AppUpdate(
  * "required".
  */
 data class RemoteConfigData(
-    val variableA: Int = 0,
-    val featureX: Boolean = false,
-    /** The drawer's "Telegram announcements" link; null = the app's built-in one. */
-    val telegramUrl: String? = null,
-    /** Settings › About's "Changelog" link; null hides the row (the "updated" notice uses the app's built-in one). */
-    val changelogUrl: String? = null,
-    /** The drawer header's website link; null = the app's built-in one. */
-    val websiteUrl: String? = null,
-    /** The Feedback screen's email address; null = the app's built-in one. */
-    val feedbackEmail: String? = null,
-    /** The Feedback screen's "new issue" page (the info is added as a `body` query parameter); null = the app's built-in one. */
-    val feedbackIssueUrl: String? = null,
-    /** Settings › About's "Source code" link; null = the app's built-in one. */
-    val sourceCodeUrl: String? = null,
-    /** Settings › About's "Terms" link; null = the app's built-in one. */
-    val termsUrl: String? = null,
-    /** Where "Donate" opens when the supporter app isn't installed; null = its store page. */
-    val donationUrl: String? = null,
-    /** The official download site, where a failed or impossible in-app update sends the user. */
-    val downloadPageUrl: String? = null,
+    val features: Features = Features(),
     val appUpdate: AppUpdate? = null,
     val engineJs: BundleVersion? = null,
     val playerJs: BundleVersion? = null,
+    /** Tags this client puts on every Sentry event while the service sends them. */
+    val sentryTags: Map<String, String> = emptyMap(),
     // client populated timestamp at time data parsed from server
-    val updatedAt: Long,
+    val updatedAt: Long = 0L,
 ) {
     companion object {
-        /** What the app runs on before the first successful fetch, and with no cache to fall back on. */
-        val DEFAULTS = RemoteConfigData(updatedAt = 0L)
         private const val KEY_FEATURES = "features"
-        private const val KEY_VARIABLE_A = "variableA"
-        private const val KEY_FEATURE_X = "featureX"
-        private const val KEY_TELEGRAM_URL = "telegramUrl"
-        private const val KEY_CHANGELOG_URL = "changelogUrl"
-        private const val KEY_WEBSITE_URL = "websiteUrl"
-        private const val KEY_FEEDBACK_EMAIL = "feedbackEmail"
-        private const val KEY_FEEDBACK_ISSUE_URL = "feedbackIssueUrl"
-        private const val KEY_SOURCE_CODE_URL = "sourceCodeUrl"
-        private const val KEY_TERMS_URL = "termsUrl"
-        private const val KEY_DONATION_URL = "donationUrl"
-        private const val KEY_DOWNLOAD_PAGE_URL = "downloadPageUrl"
         private const val KEY_APP_UPDATE = "appUpdate"
         private const val KEY_ENGINE_JS = "engineJs"
         private const val KEY_PLAYER_JS = "playerJs"
+        private const val KEY_SENTRY_TAGS = "sentryTags"
         private const val KEY_UPDATED_AT = "updatedAt"
 
         /**
@@ -172,45 +265,25 @@ data class RemoteConfigData(
          * so [now] stamps it. If a server ever DOES send it, it wins — which is worth knowing, since
          * that hands it the ability to pin clients to a document it declares perpetually fresh.
          */
-        fun from(root: JsonObject, now: () -> Long): RemoteConfigData {
-            val features = root.objectOrNull(KEY_FEATURES)
-            return RemoteConfigData(
-                variableA = features?.intOrNull(KEY_VARIABLE_A) ?: DEFAULTS.variableA,
-                featureX = features?.boolOrNull(KEY_FEATURE_X) ?: DEFAULTS.featureX,
-                telegramUrl = features?.stringOrNull(KEY_TELEGRAM_URL),
-                changelogUrl = features?.stringOrNull(KEY_CHANGELOG_URL),
-                websiteUrl = features?.stringOrNull(KEY_WEBSITE_URL),
-                feedbackEmail = features?.stringOrNull(KEY_FEEDBACK_EMAIL),
-                feedbackIssueUrl = features?.stringOrNull(KEY_FEEDBACK_ISSUE_URL),
-                sourceCodeUrl = features?.stringOrNull(KEY_SOURCE_CODE_URL),
-                termsUrl = features?.stringOrNull(KEY_TERMS_URL),
-                donationUrl = features?.stringOrNull(KEY_DONATION_URL),
-                downloadPageUrl = features?.stringOrNull(KEY_DOWNLOAD_PAGE_URL),
-                appUpdate = root.objectOrNull(KEY_APP_UPDATE)?.let(AppUpdate::from),
-                engineJs = root.objectOrNull(KEY_ENGINE_JS)?.let(BundleVersion::from),
-                playerJs = root.objectOrNull(KEY_PLAYER_JS)?.let(BundleVersion::from),
-                updatedAt = root.longOrNull(KEY_UPDATED_AT) ?: now(),
-            )
-        }
+        fun from(root: JsonObject, now: () -> Long): RemoteConfigData = RemoteConfigData(
+            features = root.objectOrNull(KEY_FEATURES)?.let(::Features) ?: Features(),
+            appUpdate = root.objectOrNull(KEY_APP_UPDATE)?.let(AppUpdate::from),
+            engineJs = root.objectOrNull(KEY_ENGINE_JS)?.let(BundleVersion::from),
+            playerJs = root.objectOrNull(KEY_PLAYER_JS)?.let(BundleVersion::from),
+            sentryTags = root.objectOrNull(KEY_SENTRY_TAGS).orEmpty().filterValues { it !is JsonNull }
+                .mapValues { (_, tag) -> (tag as? JsonPrimitive)?.content ?: tag.toString() },
+            updatedAt = root.longOrNull(KEY_UPDATED_AT) ?: now(),
+        )
 
         fun JsonWriter.value(data: RemoteConfigData): JsonWriter {
             beginObject()
-            name(KEY_FEATURES).beginObject()
-            name(KEY_VARIABLE_A).value(data.variableA)
-            name(KEY_FEATURE_X).value(data.featureX)
-            data.telegramUrl?.let { name(KEY_TELEGRAM_URL).value(it) }
-            data.changelogUrl?.let { name(KEY_CHANGELOG_URL).value(it) }
-            data.websiteUrl?.let { name(KEY_WEBSITE_URL).value(it) }
-            data.feedbackEmail?.let { name(KEY_FEEDBACK_EMAIL).value(it) }
-            data.feedbackIssueUrl?.let { name(KEY_FEEDBACK_ISSUE_URL).value(it) }
-            data.sourceCodeUrl?.let { name(KEY_SOURCE_CODE_URL).value(it) }
-            data.termsUrl?.let { name(KEY_TERMS_URL).value(it) }
-            data.donationUrl?.let { name(KEY_DONATION_URL).value(it) }
-            data.downloadPageUrl?.let { name(KEY_DOWNLOAD_PAGE_URL).value(it) }
-            endObject()
+            name(KEY_FEATURES).value(data.features)
             data.appUpdate?.let { name(KEY_APP_UPDATE).value(it) }
             data.engineJs?.let { name(KEY_ENGINE_JS).value(it) }
             data.playerJs?.let { name(KEY_PLAYER_JS).value(it) }
+            name(KEY_SENTRY_TAGS).beginObject()
+            data.sentryTags.forEach { (key, tag) -> name(key).value(tag) }
+            endObject()
             // Persisted so a restart knows how old this is, rather than refetching on every launch.
             name(KEY_UPDATED_AT).value(data.updatedAt)
             endObject()

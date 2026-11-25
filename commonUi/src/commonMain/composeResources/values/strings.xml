@@ -42,7 +42,10 @@
     <string name="downloads_action_pause">Pause</string>
     <string name="downloads_action_resume">Resume</string>
     <string name="downloads_action_reveal_library">Reveal in Library</string>
-    <string name="downloads_action_reveal_finder">Reveal in Finder</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Reveal in Finder</string>
+    <string name="menu_reveal_explorer">Reveal in File Explorer</string>
+    <string name="menu_reveal_file_manager">Reveal in File Manager</string>
     <!-- A finished download's date: %1$s = month from month_abbr, %2$d = day, %3$d = year. -->
     <string name="downloads_completed_date">%1$s %2$d, %3$d</string>
     <string-array name="month_abbr">
@@ -164,8 +167,38 @@
     <string name="yt_playlist_removed_video">Removed %1$s from the playlist</string>
     <string name="cd_add_to_playlist">Add to playlist</string>
     <string name="cd_share">Share</string>
-    <string name="cd_music_video">Music</string>
-    <string name="cd_album">Album</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Video</string>
+    <string name="a11y_kind_music_video">Music video</string>
+    <string name="a11y_kind_live">Live video</string>
+    <string name="a11y_kind_playlist">Playlist</string>
+    <string name="a11y_kind_album">Album</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Channel</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
+    <!-- Screen-reader prefix of the queue row that is playing -->
+    <string name="a11y_now_playing">Now playing</string>
+    <string name="a11y_playback_position">Playback position</string>
+    <!-- A position against a total, spoken: "1 minute 5 seconds of 3 minutes 45 seconds", "12 MB of 40 MB" -->
+    <string name="a11y_x_of_y">%1$s of %2$s</string>
+    <!-- How far a live stream plays behind its live edge, spoken: "3 seconds behind live" -->
+    <string name="a11y_behind_live">%1$s behind live</string>
+    <!-- Screen-reader state of a video the Library already holds -->
+    <string name="a11y_downloaded">Downloaded</string>
+    <!-- Screen-reader name of the equalizer's PRE (preamp) fader -->
+    <string name="a11y_eq_preamp">Preamp</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Folders</string>
@@ -217,6 +250,11 @@
     <string name="menu_remove_from_playlist">Remove from playlist</string>
     <string name="playlist_delete_title">Delete playlist?</string>
     <string name="playlist_delete_message">“%1$s” will be removed. The songs stay in your library.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Remove %1$d song from playlist?</item>
+        <item quantity="other">Remove %1$d songs from playlist?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">The songs stay in your library.</string>
     <string name="add_to_playlist_new">New playlist…</string>
     <string name="playlist_recent_play">Recent play</string>
     <string name="playlist_top_tracks">Top tracks</string>
@@ -281,7 +319,6 @@
     <string name="settings_debug">Debug</string>
     <string name="settings_show_fps">Show FPS</string>
     <string name="settings_show_fps_hint">Overlay pictures per second on the Now Playing video. Sampling stops when paused or you leave that screen.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_changelog">Changelog</string>
     <string name="settings_source_code">Source code</string>
     <string name="settings_licenses">Open source licenses</string>
@@ -324,6 +361,10 @@
     <string name="cd_search">Search</string>
     <string name="cd_back">Back</string>
     <string name="cd_clear">Clear</string>
+    <string name="cd_voice_search">Search by voice</string>
+    <string name="voice_search_press_ok">Press OK to search by voice</string>
+    <string name="voice_search_listening">Listening…</string>
+    <string name="voice_search_missed">Didn't catch that. Press OK to try again</string>
     <string name="cd_close">Close</string>
     <string name="cd_more">More</string>
     <string name="cd_collapse">Collapse</string>
@@ -335,11 +376,15 @@
     <string name="cd_download">Download</string>
     <string name="cd_fullscreen">Full screen</string>
     <string name="cd_exit_fullscreen">Exit full screen</string>
+    <string name="cd_show_queue">Show queue</string>
+    <string name="cd_hide_queue">Hide queue</string>
     <string name="cd_minimize">Minimize</string>
     <string name="cd_fit_video">Fit video</string>
     <string name="cd_fill_video">Fill screen</string>
-    <string name="cd_lock_rotation">Lock rotation</string>
-    <string name="cd_unlock_rotation">Unlock rotation</string>
+    <string name="cd_screen_rotation">Screen rotation</string>
+    <string name="rotation_lock_landscape">Lock landscape</string>
+    <string name="rotation_lock_portrait">Lock portrait</string>
+    <string name="rotation_free">Free rotate</string>
     <string name="cd_rewind10">Rewind 10 seconds</string>
     <string name="cd_forward10">Forward 10 seconds</string>
     <string name="cd_repeat_off">Repeat: off</string>
@@ -432,7 +477,6 @@
     <string name="account_sign_out">Sign out</string>
     <string name="account_switch">Switch account</string>
     <string name="switch_account_hint">Pick the account you want, then close this screen with the back arrow — the app refreshes under the new account.</string>
-    <string name="cd_account_avatar">Account picture</string>
     <string name="account_my_channel">My channel</string>
     <string name="account_watch_history">Watch history</string>
     <string name="account_watch_later">Watch later</string>
@@ -454,6 +498,8 @@
     <string name="settings_audio_focus_apps">Pause when other apps play sound</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Automatically skip sponsored segments in YouTube videos. Turn off for a video from Now Playing.</string>
+    <string name="settings_stable_volume">Stable volume</string>
+    <string name="settings_stable_volume_hint">Evens out loud and quiet parts and plays every song at a similar loudness.</string>
     <string name="sponsor_block_included">SponsorBlock enabled for this video</string>
     <string name="sponsor_block_excluded">SponsorBlock disabled for this video</string>
     <string name="settings_sound">Sound</string>
@@ -517,11 +563,9 @@
     <string name="download_more_qualities">+%1$d more</string>
     <string name="download_down_to">down to %1$s</string>
     <string name="download_less">Less</string>
-    <string name="download_webm_detail">WebM · original stream</string>
+    <string name="download_webm_detail">Opus · original stream</string>
     <string name="download_m4a_detail">AAC · original stream</string>
-    <string name="download_mp3_detail">%1$d kbps · plays everywhere</string>
-    <string name="settings_mp3_source_bitrate">Download MP3 at original bitrate</string>
-    <string name="settings_mp3_source_bitrate_hint">Encode MP3 at about 256 kbps (variable bitrate) instead of 320 kbps. Smaller files, same quality.</string>
+    <string name="download_mp3_detail">Plays everywhere</string>
     <string name="download_audio_track">Audio track</string>
     <string name="download_captions">Captions</string>
     <string name="download_captions_off">Off</string>
@@ -551,7 +595,7 @@
     <string name="download_no_subtitles">None available</string>
     <string name="dialog_ok_done">Done</string>
     <string name="download_captions_as_lyrics">%1$s · as lyrics</string>
-    <string name="download_lyrics_note">MP3 keeps captions as lyrics, shown by players that read lyrics.</string>
+    <string name="download_lyrics_note">This format keeps captions as lyrics, shown by players that read lyrics.</string>
     <string name="download_caption_translated">%1$s (auto-translated)</string>
     <string name="download_live_unsupported">Can’t download a LIVE video</string>
     <string name="download_save_quick">Save as Quick download</string>
@@ -608,6 +652,12 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">The system Files app is turned off. Turn it on to choose a folder.</string>
     <string name="folder_picker_open_settings">Open settings</string>
+    <string name="folder_picker_use_folder">Use this folder</string>
+    <string name="folder_picker_empty">No folders here</string>
+    <string name="folder_picker_storage_denied">Allow access to your music files in settings to choose a folder.</string>
+    <string name="folder_picker_companion_message">This device has no folder picker. To choose folders, download and install YMusic Files, a small helper for YMusic, from this link, then try again.</string>
+    <string name="folder_picker_companion_update">YMusic Files needs an update to work with this version of YMusic. Download and install the latest version from this link, then try again.</string>
+    <string name="folder_picker_companion_open">Open link</string>
     <string name="folder_picker_missing">This device doesn't have a folder picker, so a folder can't be chosen.</string>
     <string name="error_supervised_account">This Google account is supervised, so YouTube can't be used here. Sign out or switch to another account.</string>
     <string name="captcha_verify">Verify</string>
@@ -662,14 +712,16 @@
     <string name="cookie_protect_confirm">Confirm password</string>
     <string name="cookie_protect_mismatch">The passwords don’t match.</string>
     <string name="cookie_protect_submit">Protect</string>
-    <string name="cookie_protect_skip">Never mind</string>
+    <string name="cookie_protect_skip">Not now</string>
     <string name="cookie_unlock_title">Unlock your sign-in</string>
     <string name="cookie_unlock_body">Your YouTube sign-in is protected with a password.</string>
     <string name="cookie_unlock_submit">Unlock</string>
     <string name="cookie_unlock_wrong">Wrong password.</string>
-    <string name="cookie_unlock_guest">Use as guest</string>
-    <string name="cookie_unlock_guest_hint">Starts signed out. Nothing from a guest session is kept.</string>
+    <string name="cookie_unlock_cant_unlock">Can’t unlock?</string>
+    <string name="cookie_unlock_guest">Continue as guest</string>
+    <string name="cookie_unlock_guest_hint">Starts signed out. Nothing is kept.</string>
     <string name="cookie_unlock_sign_out">Sign out</string>
+    <string name="cookie_unlock_sign_out_hint">Removes this saved sign-in.</string>
     <string name="cookie_unlock_sign_out_title">Sign out?</string>
     <string name="cookie_unlock_sign_out_body">This removes the saved sign-in from this computer. To sign in again, scan the QR code with the YMusic app.</string>
     <string name="link_unsupported">YMusic can't open this link</string>
@@ -738,4 +790,67 @@
     <string name="download_other_format">Download in another format</string>
     <string name="unsubscribe">Unsubscribe</string>
     <string name="unsubscribed">Unsubscribed</string>
+    <string name="tray_pause">Pause</string>
+    <string name="tray_resume">Resume</string>
+    <string name="tray_stop">Stop (clear queue)</string>
+    <string name="tray_quit">Quit</string>
+    <string name="shortcuts_title">Keyboard shortcuts</string>
+    <string name="shortcuts_play_pause">Play / pause</string>
+    <string name="shortcuts_now_playing">Show or hide Now Playing</string>
+    <string name="shortcuts_nav_menu">Open or close the menu</string>
+    <string name="shortcuts_switch_tabs">Switch tabs</string>
+    <string name="shortcuts_escape">Exit full screen, or close Now Playing, the menu or a pop-up</string>
+    <string name="shortcuts_help">Show this help</string>
+    <string name="shortcuts_volume_up">Volume up</string>
+    <string name="shortcuts_volume_down">Volume down</string>
+    <string name="a11y_key_arrow_left">left arrow</string>
+    <string name="a11y_key_arrow_right">right arrow</string>
+    <string name="a11y_key_arrow_up">up arrow</string>
+    <string name="a11y_key_arrow_down">down arrow</string>
+    <string name="cd_always_on_top">Always on top</string>
+    <string name="settings_caption_size">Size</string>
+    <string name="caption_size_preview">Captions will look like this</string>
+    <string name="settings_caption_style">Caption style</string>
+    <string name="settings_caption_style_hint">Size, color and background of video captions</string>
+    <string name="caption_text_color">Text color</string>
+    <string name="caption_background">Background</string>
+    <string name="caption_background_opacity">Background opacity</string>
+    <string name="download_quality_save">Save</string>
+    <string name="download_quality_medium">Medium</string>
+    <string name="download_quality_best">Best</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows blocked part of YMusic from running.</string>
+    <string name="media_engine_unavailable">Music and videos can't play here, but you can still browse and search.</string>
+    <string name="native_blocked_help">On a work or school PC, ask your administrator to allow YMusic. On your own PC, check Smart App Control in Windows Security.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Refreshing</string>
+    <!-- A focused spinner while a page of items loads -->
+    <string name="a11y_loading">Loading</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Select all</string>
+    <string name="downloads_action_select">Select</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Remove %1$d download from the list?</item>
+        <item quantity="other">Remove %1$d downloads from the list?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Finished files stay on this device.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Delete %1$d file?</item>
+        <item quantity="other">Delete %1$d files?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Deleted files can't be recovered.</string>
+    <string name="downloads_cancel_selected">Cancel downloads</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Cancel %1$d download?</item>
+        <item quantity="other">Cancel %1$d downloads?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">What was downloaded so far is deleted.</string>
+    <string name="downloads_cancel_selected_keep">Keep</string>
+    <string name="data_dir_unusable">YMusic can't open its data folder, %1$s. Make sure it's a folder you can write to, then open YMusic again. (%2$s)</string>
 </resources>

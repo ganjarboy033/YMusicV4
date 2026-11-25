@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Încă nu există descărcări</string>
     <string name="downloads_none_message">Melodiile și videoclipurile descărcate rulează offline.</string>
     <string name="downloads_failed">Descărcarea nu a reușit</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Afișează în Finder</string>
+    <string name="menu_reveal_explorer">Afișează în Explorer fișiere</string>
+    <string name="menu_reveal_file_manager">Afișează în managerul de fișiere</string>
     <string name="section_settings">Setări</string>
     <string name="section_donate">Donează</string>
     <string name="section_feedback">Feedback</string>
@@ -121,8 +125,36 @@
     <string name="yt_playlist_removed_video">%1$s a fost eliminat din playlist</string>
     <string name="cd_add_to_playlist">Adaugă în playlist</string>
     <string name="cd_share">Distribuie</string>
-    <string name="cd_music_video">Muzică</string>
-    <string name="cd_album">Album</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Videoclip</string>
+    <string name="a11y_kind_music_video">Videoclip muzical</string>
+    <string name="a11y_kind_live">Transmisiune live</string>
+    <string name="a11y_kind_playlist">Playlist</string>
+    <string name="a11y_kind_album">Album</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Canal</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d oră</item>
+        <item quantity="few">%1$d ore</item>
+        <item quantity="other">%1$d de ore</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d minut</item>
+        <item quantity="few">%1$d minute</item>
+        <item quantity="other">%1$d de minute</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d secundă</item>
+        <item quantity="few">%1$d secunde</item>
+        <item quantity="other">%1$d de secunde</item>
+    </plurals>
+    <string name="a11y_now_playing">Se redă acum</string>
+    <string name="a11y_playback_position">Poziția redării</string>
+    <string name="a11y_x_of_y">%1$s din %2$s</string>
+    <string name="a11y_behind_live">%1$s în urma transmisiunii live</string>
+    <string name="a11y_downloaded">Descărcat</string>
+    <string name="a11y_eq_preamp">Preamplificator</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Dosare</string>
@@ -170,6 +202,12 @@
     <string name="menu_remove_from_playlist">Elimină din playlist</string>
     <string name="playlist_delete_title">Ștergi playlistul?</string>
     <string name="playlist_delete_message">„%1$s” va fi eliminat. Melodiile rămân în biblioteca ta.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Elimini %1$d melodie din playlist?</item>
+        <item quantity="few">Elimini %1$d melodii din playlist?</item>
+        <item quantity="other">Elimini %1$d de melodii din playlist?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">Melodiile rămân în biblioteca ta.</string>
     <string name="add_to_playlist_new">Playlist nou…</string>
     <string name="playlist_recent_play">Redate recent</string>
     <string name="playlist_top_tracks">Piese de top</string>
@@ -227,7 +265,6 @@
     <string name="settings_debug">Depanare</string>
     <string name="settings_show_fps">Afișează FPS</string>
     <string name="settings_show_fps_hint">Afișează cadrele pe secundă peste videoclipul din Se redă acum. Măsurarea se oprește când pui pauză sau părăsești ecranul.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Licențe open source</string>
     <string name="settings_terms">Termeni și confidențialitate</string>
     <string name="settings_licenses_intro">YMusic este open source sub licența GNU GPL v3.0. Include aceste componente:</string>
@@ -264,6 +301,10 @@
     <string name="cd_search">Caută</string>
     <string name="cd_back">Înapoi</string>
     <string name="cd_clear">Șterge</string>
+    <string name="cd_voice_search">Caută vocal</string>
+    <string name="voice_search_press_ok">Apasă OK pentru a căuta vocal</string>
+    <string name="voice_search_listening">Se ascultă…</string>
+    <string name="voice_search_missed">Nu s-a înțeles. Apasă OK pentru a încerca din nou</string>
     <string name="cd_close">Închide</string>
     <string name="cd_more">Mai multe</string>
     <string name="cd_collapse">Restrânge</string>
@@ -273,10 +314,14 @@
     <string name="cd_download">Descarcă</string>
     <string name="cd_fullscreen">Ecran complet</string>
     <string name="cd_exit_fullscreen">Ieși din ecranul complet</string>
+    <string name="cd_show_queue">Afișează coada</string>
+    <string name="cd_hide_queue">Ascunde coada</string>
     <string name="cd_fit_video">Încadrează videoclipul</string>
     <string name="cd_fill_video">Umple ecranul</string>
-    <string name="cd_lock_rotation">Blochează rotirea</string>
-    <string name="cd_unlock_rotation">Deblochează rotirea</string>
+    <string name="cd_screen_rotation">Rotirea ecranului</string>
+    <string name="rotation_lock_landscape">Blochează pe orizontală</string>
+    <string name="rotation_lock_portrait">Blochează pe verticală</string>
+    <string name="rotation_free">Rotire liberă</string>
     <string name="cd_rewind10">Înapoi 10 secunde</string>
     <string name="cd_forward10">Înainte 10 secunde</string>
     <string name="cd_repeat_off">Repetă: dezactivat</string>
@@ -364,7 +409,6 @@
     <string name="account_sign_out">Deconectează-te</string>
     <string name="account_switch">Schimbă contul</string>
     <string name="switch_account_hint">Alege contul dorit, apoi închide acest ecran cu săgeata înapoi — aplicația se reîmprospătează cu noul cont.</string>
-    <string name="cd_account_avatar">Fotografia contului</string>
     <string name="account_my_channel">Canalul meu</string>
     <string name="account_watch_history">Istoricul vizionărilor</string>
     <string name="account_watch_later">Vizionează mai târziu</string>
@@ -386,6 +430,8 @@
     <string name="settings_audio_focus_apps">Întrerupe când alte aplicații redau sunet</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Omite automat segmentele sponsorizate din videoclipurile YouTube. Dezactivează pentru un videoclip din Se redă acum.</string>
+    <string name="settings_stable_volume">Volum stabil</string>
+    <string name="settings_stable_volume_hint">Echilibrează pasajele puternice și cele încete și redă fiecare melodie la un volum asemănător.</string>
     <string name="sponsor_block_included">SponsorBlock activat pentru acest videoclip</string>
     <string name="sponsor_block_excluded">SponsorBlock dezactivat pentru acest videoclip</string>
     <string name="settings_sound">Sunet</string>
@@ -430,11 +476,9 @@
     <string name="download_more_qualities">încă +%1$d</string>
     <string name="download_down_to">până la %1$s</string>
     <string name="download_less">Mai puțin</string>
-    <string name="download_webm_detail">WebM · flux original</string>
+    <string name="download_webm_detail">Opus · flux original</string>
     <string name="download_m4a_detail">AAC · flux original</string>
-    <string name="download_mp3_detail">%1$d kbps · merge oriunde</string>
-    <string name="settings_mp3_source_bitrate">Descarcă MP3 la rata de biți originală</string>
-    <string name="settings_mp3_source_bitrate_hint">Codifică MP3 la aproximativ 256 kbps (rată de biți variabilă) în loc de 320 kbps. Fișiere mai mici, aceeași calitate.</string>
+    <string name="download_mp3_detail">Merge oriunde</string>
     <string name="download_audio_track">Pistă audio</string>
     <string name="download_captions">Subtitrări</string>
     <string name="download_captions_off">Dezactivate</string>
@@ -461,7 +505,7 @@
     <string name="download_no_subtitles">Niciuna disponibilă</string>
     <string name="dialog_ok_done">Gata</string>
     <string name="download_captions_as_lyrics">%1$s · ca versuri</string>
-    <string name="download_lyrics_note">MP3 păstrează subtitrările ca versuri, afișate de playerele care citesc versuri.</string>
+    <string name="download_lyrics_note">Acest format păstrează subtitrările ca versuri, afișate de playerele care citesc versuri.</string>
     <string name="download_caption_translated">%1$s (traduse automat)</string>
     <string name="download_live_unsupported">Un videoclip LIVE nu poate fi descărcat</string>
     <string name="download_save_quick">Salvează ca Descărcare rapidă</string>
@@ -510,6 +554,13 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">Aplicația Fișiere a sistemului este dezactivată. Activează-o pentru a alege un dosar.</string>
     <string name="folder_picker_open_settings">Deschide setările</string>
+    <string name="folder_picker_title">Alege un dosar cu muzică</string>
+    <string name="folder_picker_use_folder">Folosește acest dosar</string>
+    <string name="folder_picker_empty">Niciun dosar aici</string>
+    <string name="folder_picker_storage_denied">Permite accesul la fișierele de muzică din setări pentru a alege un dosar.</string>
+    <string name="folder_picker_companion_message">Acest dispozitiv nu are selector de dosare. Ca să alegi dosare, descarcă și instalează de la acest link YMusic Files, o mică aplicație ajutătoare pentru YMusic, apoi încearcă din nou.</string>
+    <string name="folder_picker_companion_update">YMusic Files trebuie actualizat ca să funcționeze cu această versiune de YMusic. Descarcă și instalează cea mai nouă versiune de la acest link, apoi încearcă din nou.</string>
+    <string name="folder_picker_companion_open">Deschide linkul</string>
     <string name="folder_picker_missing">Acest dispozitiv nu are selector de dosare, deci nu se poate alege un dosar.</string>
     <string name="error_supervised_account">Acest cont Google este supravegheat, așa că YouTube nu poate fi folosit aici. Deconectează-te sau comută la alt cont.</string>
     <string name="settings_player_cache">Cache player</string>
@@ -556,6 +607,24 @@
     <string name="video_details_delete_title">Șterge comentariul</string>
     <string name="video_details_delete_message">Ștergi definitiv comentariul și toate răspunsurile la acesta?</string>
     <string name="video_details_deleted">Comentariu șters</string>
+    <string name="cookie_protect_title">Protejezi conectarea cu o parolă?</string>
+    <string name="cookie_protect_body">Conectarea ta este salvată pe acest computer, unde alte aplicații pe care le rulezi o pot citi. Setează o parolă pentru a o bloca; YMusic ți-o va cere la fiecare pornire.</string>
+    <string name="cookie_password">Parolă</string>
+    <string name="cookie_protect_confirm">Confirmă parola</string>
+    <string name="cookie_protect_mismatch">Parolele nu se potrivesc.</string>
+    <string name="cookie_protect_submit">Protejează</string>
+    <string name="cookie_protect_skip">Nu acum</string>
+    <string name="cookie_unlock_title">Deblochează conectarea</string>
+    <string name="cookie_unlock_body">Conectarea ta YouTube este protejată cu o parolă.</string>
+    <string name="cookie_unlock_submit">Deblochează</string>
+    <string name="cookie_unlock_wrong">Parolă greșită.</string>
+    <string name="cookie_unlock_cant_unlock">Nu poți debloca?</string>
+    <string name="cookie_unlock_guest">Continuă ca invitat</string>
+    <string name="cookie_unlock_guest_hint">Pornește deconectat. Nu se păstrează nimic.</string>
+    <string name="cookie_unlock_sign_out">Deconectează-te</string>
+    <string name="cookie_unlock_sign_out_hint">Elimină această conectare salvată.</string>
+    <string name="cookie_unlock_sign_out_title">Te deconectezi?</string>
+    <string name="cookie_unlock_sign_out_body">Conectarea salvată va fi eliminată de pe acest computer. Pentru a te conecta din nou, scanează codul QR cu aplicația YMusic.</string>
     <string name="menu_details_comments">Detalii și comentarii</string>
     <string name="menu_search_lyrics">Caută versurile</string>
     <string name="menu_speed_pitch">Viteză și tonalitate</string>
@@ -575,4 +644,70 @@
     <string name="download_other_format">Descarcă în alt format</string>
     <string name="unsubscribe">Dezabonează-te</string>
     <string name="unsubscribed">Dezabonat</string>
+    <string name="tray_pause">Pauză</string>
+    <string name="tray_resume">Reia</string>
+    <string name="tray_stop">Oprește (golește coada)</string>
+    <string name="tray_quit">Închide</string>
+    <string name="shortcuts_title">Comenzi rapide de la tastatură</string>
+    <string name="shortcuts_play_pause">Redare / pauză</string>
+    <string name="shortcuts_now_playing">Afișează sau ascunde Se redă acum</string>
+    <string name="shortcuts_nav_menu">Deschide sau închide meniul</string>
+    <string name="shortcuts_switch_tabs">Comută între file</string>
+    <string name="shortcuts_escape">Ieși din ecranul complet sau închide Se redă acum, meniul ori o fereastră pop-up</string>
+    <string name="shortcuts_help">Afișează acest ajutor</string>
+    <string name="shortcuts_volume_up">Mărește volumul</string>
+    <string name="shortcuts_volume_down">Micșorează volumul</string>
+    <string name="a11y_key_arrow_left">săgeată stânga</string>
+    <string name="a11y_key_arrow_right">săgeată dreapta</string>
+    <string name="a11y_key_arrow_up">săgeată sus</string>
+    <string name="a11y_key_arrow_down">săgeată jos</string>
+    <string name="cd_always_on_top">Mereu deasupra</string>
+    <string name="settings_caption_size">Dimensiune</string>
+    <string name="caption_size_preview">Subtitrările vor arăta așa</string>
+    <string name="settings_caption_style">Stilul subtitrărilor</string>
+    <string name="settings_caption_style_hint">Dimensiunea, culoarea și fundalul subtitrărilor video</string>
+    <string name="caption_text_color">Culoarea textului</string>
+    <string name="caption_background">Fundal</string>
+    <string name="caption_background_opacity">Opacitatea fundalului</string>
+    <string name="download_quality_save">Economic</string>
+    <string name="download_quality_medium">Medie</string>
+    <string name="download_quality_best">Cea mai bună</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows a blocat o parte din YMusic.</string>
+    <string name="media_engine_unavailable">Muzica și videoclipurile nu pot fi redate aici, dar poți în continuare să răsfoiești și să cauți.</string>
+    <string name="native_blocked_help">Pe un PC de la serviciu sau școală, cere administratorului să permită YMusic. Pe PC-ul tău, verifică Smart App Control în Securitate Windows.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Se reîmprospătează</string>
+    <string name="a11y_loading">Se încarcă</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Selectează tot</string>
+    <string name="downloads_action_select">Selectează</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d selectat</item>
+        <item quantity="few">%1$d selectate</item>
+        <item quantity="other">%1$d selectate</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Elimini %1$d descărcare din listă?</item>
+        <item quantity="few">Elimini %1$d descărcări din listă?</item>
+        <item quantity="other">Elimini %1$d de descărcări din listă?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Fișierele finalizate rămân pe acest dispozitiv.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Ștergi %1$d fișier?</item>
+        <item quantity="few">Ștergi %1$d fișiere?</item>
+        <item quantity="other">Ștergi %1$d de fișiere?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Fișierele șterse nu pot fi recuperate.</string>
+    <string name="downloads_cancel_selected">Anulează descărcările</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Anulezi %1$d descărcare?</item>
+        <item quantity="few">Anulezi %1$d descărcări?</item>
+        <item quantity="other">Anulezi %1$d de descărcări?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">Ce s-a descărcat până acum va fi șters.</string>
+    <string name="downloads_cancel_selected_keep">Păstrează</string>
+    <string name="data_dir_unusable">YMusic nu își poate deschide dosarul de date, %1$s. Asigură-te că este un dosar în care poți scrie, apoi deschide din nou YMusic. (%2$s)</string>
 </resources>

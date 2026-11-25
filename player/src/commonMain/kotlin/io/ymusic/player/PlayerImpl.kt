@@ -45,6 +45,8 @@ internal class PlayerImpl(
     /** Next queue index ([QueueController.peekNext]); [prepareNextArmed] once preload (or skip) ran. */
     private var prepareNextIndex: Int? = null
     private var prepareNextArmed = false
+    private var queueOrigin = QueueOrigin.Unknown
+    private var lastChange = QueueChange.Load
 
     /** [prepareNextIndex] came from a freshly loaded page — a user skip honors it too. */
     private var nextFromPage = false
@@ -101,9 +103,15 @@ internal class PlayerImpl(
         set(value) { _config.value = value }
 
     private var ducked = false
+    private var voiceDucked = false
+    private var videoHidden = false
+
+    /** [PlayableItem.loudnessScale] of the item last handed to an engine. */
+    private var loudnessScale = 1f
 
     /** What the engines apply: [currentConfig] with the audio effects flattened while they are off
-     *  and the volume lowered while [ducked]. */
+     *  and the volume lowered while [ducked] or [voiceDucked] and scaled by [loudnessScale] under
+     *  [PlaybackConfig.stableVolume], plus [videoHidden]. */
     private val engineConfig: PlaybackConfig
         get() = currentConfig.let {
             if (it.inAppAudioFx) {
@@ -111,7 +119,11 @@ internal class PlayerImpl(
             } else {
                 it.copy(eqBands = List(10) { 0f }, bassBoostDb = 0f, virtualizer = 1f, preampDb = 0f)
             }
-        }.let { if (ducked) it.copy(volume = it.volume * DUCK_VOLUME) else it }
+        }.let {
+            val duck = minOf(if (ducked) DUCK_VOLUME else 1f, if (voiceDucked) VOICE_DUCK_VOLUME else 1f)
+            it.copy(volume = it.volume * duck)
+        }
+            .let { it.copy(volume = it.volume * (if (it.stableVolume) loudnessScale else 1f), videoHidden = videoHidden) }
 
     /** The engine bound to the current item — internal routing state; not exposed (the UI hands one
      *  video container to the engines and each owns its own surface, so it never needs this). */
@@ -138,8 +150,11 @@ internal class PlayerImpl(
         playWhenReady: Boolean,
         queueId: String?,
         source: QueueSource?,
+        origin: QueueOrigin,
     ) {
         if (released) return
+        queueOrigin = origin
+        lastChange = QueueChange.Load
         attachSource(source.takeIf { items.isNotEmpty() })
         controller.setQueue(items, playIndex, queueId ?: Uuid.random().toString())
         setPlayWhenReadyIntent(playWhenReady)
@@ -164,6 +179,12 @@ internal class PlayerImpl(
         publishQueue()
     }
 
+    override fun moveToPlayNext(index: Int) {
+        if (released) return
+        controller.moveNext(index)
+        publishQueue()
+    }
+
     override fun move(from: Int, to: Int) {
         if (released) return
         controller.move(from, to)
@@ -180,6 +201,7 @@ internal class PlayerImpl(
         if (released) return
         val removedCurrent = controller.removeAt(index)
         if (removedCurrent) {
+            lastChange = QueueChange.User
             publishQueue(refreshNext = false)
             if (controller.state.currentIndex >= 0) loadCurrent(0L) else {
                 refreshPrepareNext()
@@ -194,6 +216,7 @@ internal class PlayerImpl(
         if (released) return
         val removedCurrent = controller.removeRange(fromIndex, toIndex)
         if (removedCurrent) {
+            lastChange = QueueChange.User
             publishQueue(refreshNext = false)
             if (controller.state.currentIndex >= 0) loadCurrent(0L) else {
                 refreshPrepareNext()
@@ -214,7 +237,13 @@ internal class PlayerImpl(
 
     override fun playAt(index: Int) {
         if (released) return
+        val status = _status.value
+        if (index == controller.state.currentIndex && !status.state.isEnded() && status.state !is PlaybackState.Error) {
+            if (!status.playWhenReady) play()
+            return
+        }
         if (controller.moveTo(index)) {
+            lastChange = QueueChange.User
             publishQueue(refreshNext = false)
             setPlayWhenReadyIntent(true)
             loadCurrent(0L)
@@ -245,7 +274,15 @@ internal class PlayerImpl(
     }
 
     override fun togglePlay() {
-        if (status.value.playWhenReady) pause() else play()
+        val status = status.value
+        when {
+            status.state.isEnded() -> {
+                seekTo(0L)
+                play()
+            }
+            status.playWhenReady -> pause()
+            else -> play()
+        }
     }
 
     override fun stop() {
@@ -278,6 +315,7 @@ internal class PlayerImpl(
         val pagePick = prepareNextIndex.takeIf { nextFromPage }
         val next = if (pagePick != null) pagePick.also { controller.commitNext(it) } else controller.advance(userInitiated = true)
         if (next != null) {
+            lastChange = QueueChange.User
             publishQueue(refreshNext = false)
             loadCurrent(0L)
         }
@@ -292,6 +330,7 @@ internal class PlayerImpl(
         }
         val prev = controller.previous()
         if (prev != null) {
+            lastChange = QueueChange.User
             publishQueue(refreshNext = false)
             loadCurrent(0L)
         } else {
@@ -330,6 +369,18 @@ internal class PlayerImpl(
         _currentEngine.value?.setConfig(engineConfig)
     }
 
+    override fun setVoiceDucked(ducked: Boolean) {
+        if (voiceDucked == ducked) return
+        voiceDucked = ducked
+        _currentEngine.value?.setConfig(engineConfig)
+    }
+
+    override fun setVideoHidden(hidden: Boolean) {
+        if (videoHidden == hidden) return
+        videoHidden = hidden
+        _currentEngine.value?.setConfig(engineConfig)
+    }
+
     override var speed: Float
         get() = currentConfig.speed
         set(value) = pushConfig(currentConfig.copy(speed = value.coerceIn(0.25f, 4f)))
@@ -344,11 +395,13 @@ internal class PlayerImpl(
     override fun setBassBoost(db: Float) = pushConfig(currentConfig.copy(bassBoostDb = db.coerceIn(-12f, 12f)))
 
     override fun setVirtualizer(width: Float) =
-        pushConfig(currentConfig.copy(virtualizer = width.coerceIn(0f, 2f)))
+        pushConfig(currentConfig.copy(virtualizer = width.coerceIn(0.5f, 2f)))
 
     override fun setPreamp(db: Float) = pushConfig(currentConfig.copy(preampDb = db.coerceIn(-12f, 12f)))
 
     override fun setInAppAudioFx(enabled: Boolean) = pushConfig(currentConfig.copy(inAppAudioFx = enabled))
+
+    override fun setStableVolume(enabled: Boolean) = pushConfig(currentConfig.copy(stableVolume = enabled))
 
     override fun setAudioOnly(audioOnly: Boolean) {
         pushConfig(currentConfig.copy(audioOnly = audioOnly))
@@ -422,20 +475,19 @@ internal class PlayerImpl(
 
     override fun refreshOnNext() {
         ytResetOnNext = true
-        ytEngine?.refreshOnNext()
     }
 
     override fun reload() {
         if (released) return
         if (controller.state.currentItem == null) return
         val resumeMs = _progress.value.positionMs
-        if (_currentEngine.value === ytEngine) ytEngine?.refreshOnNext()
+        setPlayWhenReadyIntent(true)
         _currentEngine.value?.reset("reload")
         loadCurrent(resumeMs)
     }
 
     override fun prepareYoutubeEngine() {
-        if (released) return
+        if (released || engines.unavailable != null) return
         val factory = engines.youtube ?: return
         val engine = ytEngine ?: factory().also { ytEngine = it }
         engine.init()
@@ -447,6 +499,11 @@ internal class PlayerImpl(
 
     override fun presentedFrames(): Int =
         if (released) 0 else _currentEngine.value?.presentedFrames() ?: 0
+
+    override fun droppedFrames(): Int =
+        if (released) 0 else _currentEngine.value?.droppedFrames() ?: 0
+
+    override fun videoDecoder(): String? = if (released) null else _currentEngine.value?.videoDecoder()
 
     override fun release() {
         if (released) return
@@ -461,7 +518,7 @@ internal class PlayerImpl(
     }
 
     private fun publishQueue(refreshNext: Boolean = true) {
-        _queue.value = controller.state.copy(more = more)
+        _queue.value = controller.state.copy(more = more, origin = queueOrigin, lastChange = lastChange)
         if (refreshNext) refreshPrepareNext()
         maybeLoadAhead()
     }
@@ -608,6 +665,11 @@ internal class PlayerImpl(
         val item = controller.state.currentItem ?: return
         loadGeneration++
         val gen = loadGeneration
+        engines.unavailable?.let { error ->
+            bind(null)
+            publishStatus(PlaybackStatus(state = PlaybackState.Error(error)))
+            return
+        }
         when (item) {
             is PlayableItem.LocalMedia -> {
                 val engine = localEngine ?: engines.local().also { localEngine = it }
@@ -694,6 +756,7 @@ internal class PlayerImpl(
     }
 
     private fun loadOn(engine: MediaEngine<*>, item: PlayableItem, startPositionMs: Long) {
+        loudnessScale = item.loudnessScale
         when (item) {
             is PlayableItem.LocalMedia ->
                 (engine as LocalPlayer).load(item, startPositionMs, playWhenReadyIntent, engineConfig)
@@ -717,10 +780,7 @@ internal class PlayerImpl(
             is PlaybackState.Uninitialized -> {
                 if (!first.isInitializing) engine.init()
             }
-            is PlaybackState.Error -> {
-                if (!first.error.canRetry) return first.error
-                if (first.error.needReset) engine.reset("error ${first.error.code} needs reset") else return null
-            }
+            is PlaybackState.Error -> engine.reset("error ${first.error.code} needs reset")
             else -> return null
         }
         val settled = suspend {
@@ -824,6 +884,7 @@ internal class PlayerImpl(
         val next = prepareNextIndex
         if (next != null) {
             controller.commitNext(next)
+            lastChange = QueueChange.Auto
             publishQueue(refreshNext = false)
             loadCurrent(0L)
         }
@@ -935,6 +996,9 @@ internal class PlayerImpl(
 
     private companion object {
         const val DUCK_VOLUME = 0.3f
+
+        /** Low enough that music doesn't drown out the speaker's voice in the remote's mic. */
+        const val VOICE_DUCK_VOLUME = 0.1f
 
         /** Played longer than this, "previous" restarts the current track instead. */
         const val SMART_PREV_THRESHOLD_MS = 3_000L

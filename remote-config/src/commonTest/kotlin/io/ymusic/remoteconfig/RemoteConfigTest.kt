@@ -1,21 +1,24 @@
 package io.ymusic.remoteconfig
 
 import kmphttp.HttpStatusException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import okio.FileSystem
 import okio.IOException
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
+import kotlin.coroutines.ContinuationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 private val SERVER = RemoteConfigData(
-    variableA = 7,
-    featureX = true,
+    features = Features(JsonObject(mapOf("variableA" to JsonPrimitive(7), "featureX" to JsonPrimitive(true)))),
     appUpdate = AppUpdate(1300, "4.1.0", "notes", "https://x/y.msi", 12, "ab", "sig-app"),
     playerJs = BundleVersion(version = 123, url = "https://x/player.js", signature = "sig-player"),
     engineJs = BundleVersion(version = 11, url = "https://x/engine.js", signature = "sig-engine"),
@@ -68,6 +71,7 @@ class RemoteConfigTest {
         fileSystem = fs,
         scope = scope,
         now = { clock },
+        io = scope.coroutineContext[ContinuationInterceptor] as CoroutineDispatcher,
     )
 
     /** What [RemoteConfig.config] holds once a [RemoteConfig.checkUpdate] has run its course. */
@@ -83,8 +87,8 @@ class RemoteConfigTest {
 
         val data = settle(rc)
 
-        assertEquals(7, data.variableA)
-        assertEquals(true, data.featureX)
+        assertEquals(7, data.features.variableA)
+        assertEquals(true, data.features.featureX)
         assertEquals(123L, data.playerJs?.version)
         assertEquals(11L, data.engineJs?.version)
         assertEquals("https://x/y.msi", data.appUpdate?.url)
@@ -125,7 +129,7 @@ class RemoteConfigTest {
         val nextApi = api()
         val data = settle(config(nextApi, this, fs, cachePath))
 
-        assertEquals(7, data.variableA)
+        assertEquals(7, data.features.variableA)
         assertEquals(123L, data.playerJs?.version)
         assertEquals("https://x/y.msi", data.appUpdate?.url)
         assertEquals(clock, data.updatedAt, "the age survives the restart, so a launch need not refetch")
@@ -142,7 +146,7 @@ class RemoteConfigTest {
         val api = api()
         val data = settle(config(api, this, fs, cachePath))
 
-        assertEquals(7, data.variableA)
+        assertEquals(7, data.features.variableA)
         assertEquals(1, api.calls)
     }
 
@@ -150,7 +154,7 @@ class RemoteConfigTest {
     fun a_failed_fetch_with_no_cache_falls_back_to_the_defaults() = runTest {
         val api = api().apply { failWith = IOException("offline") }
 
-        assertEquals(RemoteConfigData.DEFAULTS, settle(config(api, this)))
+        assertEquals(RemoteConfigData(), settle(config(api, this)))
     }
 
     @Test
@@ -164,7 +168,7 @@ class RemoteConfigTest {
 
         assertEquals(
             7,
-            settle(rc).variableA,
+            settle(rc).features.variableA,
             "an outage must not change how the app behaves",
         )
     }
@@ -178,7 +182,7 @@ class RemoteConfigTest {
         api.failWith = HttpStatusException(500)
         clock += REMOTE_CONFIG_MIN_INTERVAL_MS + 1
 
-        assertEquals(7, settle(rc).variableA)
+        assertEquals(7, settle(rc).features.variableA)
     }
 
     @Test
@@ -187,12 +191,12 @@ class RemoteConfigTest {
         // not fall over if an implementation leaks something else.
         val api = api().apply { failWith = IllegalStateException("bug in the impl") }
 
-        assertEquals(RemoteConfigData.DEFAULTS, settle(config(api, this)))
+        assertEquals(RemoteConfigData(), settle(config(api, this)))
     }
 
     @Test
     fun no_service_means_defaults_and_no_request() = runTest {
-        assertEquals(RemoteConfigData.DEFAULTS, settle(config(api = null, scope = this)))
+        assertEquals(RemoteConfigData(), settle(config(api = null, scope = this)))
     }
 
     @Test

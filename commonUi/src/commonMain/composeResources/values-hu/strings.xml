@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Még nincs letöltés</string>
     <string name="downloads_none_message">A letöltött dalok és videók offline is lejátszhatók.</string>
     <string name="downloads_failed">A letöltés sikertelen</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Megjelenítés a Finderben</string>
+    <string name="menu_reveal_explorer">Megjelenítés a Fájlkezelőben</string>
+    <string name="menu_reveal_file_manager">Megjelenítés a fájlkezelőben</string>
     <string name="section_settings">Beállítások</string>
     <string name="section_donate">Támogatás</string>
     <string name="section_feedback">Visszajelzés</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">%1$s eltávolítva a lejátszási listáról</string>
     <string name="cd_add_to_playlist">Hozzáadás lejátszási listához</string>
     <string name="cd_share">Megosztás</string>
-    <string name="cd_music_video">Zene</string>
-    <string name="cd_album">Album</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Videó</string>
+    <string name="a11y_kind_music_video">Zenei videó</string>
+    <string name="a11y_kind_live">Élő közvetítés</string>
+    <string name="a11y_kind_playlist">Lejátszási lista</string>
+    <string name="a11y_kind_album">Album</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Csatorna</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d óra</item>
+        <item quantity="other">%1$d óra</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d perc</item>
+        <item quantity="other">%1$d perc</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d másodperc</item>
+        <item quantity="other">%1$d másodperc</item>
+    </plurals>
+    <string name="a11y_now_playing">Most szól</string>
+    <string name="a11y_playback_position">Lejátszási pozíció</string>
+    <string name="a11y_x_of_y">%1$s, összesen %2$s</string>
+    <string name="a11y_behind_live">%1$s késés az élő adáshoz képest</string>
+    <string name="a11y_downloaded">Letöltve</string>
+    <string name="a11y_eq_preamp">Előerősítő</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Mappák</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">Eltávolítás a lejátszási listáról</string>
     <string name="playlist_delete_title">Törlöd a lejátszási listát?</string>
     <string name="playlist_delete_message">A(z) „%1$s” törlődik. A dalok a könyvtáradban maradnak.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Eltávolítasz %1$d dalt a lejátszási listáról?</item>
+        <item quantity="other">Eltávolítasz %1$d dalt a lejátszási listáról?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">A dalok a könyvtáradban maradnak.</string>
     <string name="add_to_playlist_new">Új lejátszási lista…</string>
     <string name="playlist_recent_play">Legutóbb játszott</string>
     <string name="playlist_top_tracks">Legjobb számok</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">Hibakeresés</string>
     <string name="settings_show_fps">FPS megjelenítése</string>
     <string name="settings_show_fps_hint">Másodpercenkénti képkockaszám megjelenítése a Most szól videón. A mérés leáll szüneteltetéskor vagy a képernyő elhagyásakor.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Nyílt forráskódú licencek</string>
     <string name="settings_terms">Feltételek és adatvédelem</string>
     <string name="settings_licenses_intro">A YMusic nyílt forráskódú, GNU GPL v3.0 licenc alatt. A következő összetevőket tartalmazza:</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">Keresés</string>
     <string name="cd_back">Vissza</string>
     <string name="cd_clear">Törlés</string>
+    <string name="cd_voice_search">Hangalapú keresés</string>
+    <string name="voice_search_press_ok">Nyomja meg az OK gombot a hangalapú kereséshez</string>
+    <string name="voice_search_listening">Figyelés…</string>
+    <string name="voice_search_missed">Nem sikerült értelmezni. Nyomja meg az OK gombot az újrapróbálkozáshoz</string>
     <string name="cd_close">Bezárás</string>
     <string name="cd_more">Továbbiak</string>
     <string name="cd_collapse">Összecsukás</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">Letöltés</string>
     <string name="cd_fullscreen">Teljes képernyő</string>
     <string name="cd_exit_fullscreen">Kilépés a teljes képernyőből</string>
+    <string name="cd_show_queue">Sor megjelenítése</string>
+    <string name="cd_hide_queue">Sor elrejtése</string>
     <string name="cd_fit_video">Videó igazítása</string>
     <string name="cd_fill_video">Képernyő kitöltése</string>
-    <string name="cd_lock_rotation">Forgatás zárolása</string>
-    <string name="cd_unlock_rotation">Forgatás feloldása</string>
+    <string name="cd_screen_rotation">Képernyő elforgatása</string>
+    <string name="rotation_lock_landscape">Zárolás fekvő módban</string>
+    <string name="rotation_lock_portrait">Zárolás álló módban</string>
+    <string name="rotation_free">Szabad forgatás</string>
     <string name="cd_rewind10">10 másodperc vissza</string>
     <string name="cd_forward10">10 másodperc előre</string>
     <string name="cd_repeat_off">Ismétlés: ki</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">Kijelentkezés</string>
     <string name="account_switch">Fiókváltás</string>
     <string name="switch_account_hint">Válaszd ki a kívánt fiókot, majd zárd be ezt a képernyőt a vissza nyíllal — az alkalmazás az új fiókkal frissül.</string>
-    <string name="cd_account_avatar">Fiók képe</string>
     <string name="account_my_channel">Saját csatorna</string>
     <string name="account_watch_history">Megtekintési előzmények</string>
     <string name="account_watch_later">Megnézendő</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">Szüneteltetés, ha más alkalmazás hangot játszik le</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">A szponzorált részek automatikus átugrása a YouTube-videókban. Egy adott videónál a Most szól képernyőn kapcsolható ki.</string>
+    <string name="settings_stable_volume">Stabil hangerő</string>
+    <string name="settings_stable_volume_hint">Kiegyenlíti a hangos és halk részeket, és minden dalt hasonló hangerővel játszik le.</string>
     <string name="sponsor_block_included">SponsorBlock bekapcsolva ehhez a videóhoz</string>
     <string name="sponsor_block_excluded">SponsorBlock kikapcsolva ehhez a videóhoz</string>
     <string name="settings_sound">Hang</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d további</string>
     <string name="download_down_to">le egészen: %1$s</string>
     <string name="download_less">Kevesebb</string>
-    <string name="download_webm_detail">WebM · eredeti stream</string>
+    <string name="download_webm_detail">Opus · eredeti stream</string>
     <string name="download_m4a_detail">AAC · eredeti stream</string>
-    <string name="download_mp3_detail">%1$d kbps · mindenhol lejátszható</string>
-    <string name="settings_mp3_source_bitrate">MP3 letöltése eredeti bitrátával</string>
-    <string name="settings_mp3_source_bitrate_hint">Az MP3 kódolása körülbelül 256 kbps-sel (változó bitráta) 320 kbps helyett. Kisebb fájlok, azonos minőség.</string>
+    <string name="download_mp3_detail">Mindenhol lejátszható</string>
     <string name="download_audio_track">Hangsáv</string>
     <string name="download_captions">Feliratok</string>
     <string name="download_captions_off">Ki</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">Nem érhető el</string>
     <string name="dialog_ok_done">Kész</string>
     <string name="download_captions_as_lyrics">%1$s · dalszövegként</string>
-    <string name="download_lyrics_note">Az MP3 dalszövegként őrzi meg a feliratokat, amelyeket a dalszöveget olvasó lejátszók megjelenítenek.</string>
+    <string name="download_lyrics_note">Ez a formátum dalszövegként őrzi meg a feliratokat, amelyeket a dalszöveget olvasó lejátszók megjelenítenek.</string>
     <string name="download_caption_translated">%1$s (automatikusan fordított)</string>
     <string name="download_live_unsupported">ÉLŐ videó nem tölthető le</string>
     <string name="download_save_quick">Mentés Gyors letöltésként</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">A rendszer Fájlok alkalmazása ki van kapcsolva. Kapcsolja be mappa kiválasztásához.</string>
     <string name="folder_picker_open_settings">Beállítások megnyitása</string>
+    <string name="folder_picker_title">Zenemappa kiválasztása</string>
+    <string name="folder_picker_use_folder">Ennek a mappának a használata</string>
+    <string name="folder_picker_empty">Itt nincsenek mappák</string>
+    <string name="folder_picker_storage_denied">Mappa kiválasztásához engedélyezd a zenefájlokhoz való hozzáférést a beállításokban.</string>
+    <string name="folder_picker_companion_message">Ezen az eszközön nincs mappaválasztó. Mappák kiválasztásához töltsd le és telepítsd erről a linkről a YMusic Files-t, a YMusic kis segédalkalmazását, majd próbáld újra.</string>
+    <string name="folder_picker_companion_update">A YMusic Files frissítésre szorul, hogy működjön a YMusic ezen verziójával. Töltsd le és telepítsd a legújabb verziót erről a linkről, majd próbáld újra.</string>
+    <string name="folder_picker_companion_open">Link megnyitása</string>
     <string name="folder_picker_missing">Ezen az eszközön nincs mappaválasztó, ezért nem lehet mappát választani.</string>
     <string name="error_supervised_account">Ez a Google-fiók felügyelt, ezért a YouTube itt nem használható. Jelentkezz ki, vagy válts másik fiókra.</string>
     <string name="settings_player_cache">Lejátszó gyorsítótára</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">Hozzászólás törlése</string>
     <string name="video_details_delete_message">Véglegesen törlöd a hozzászólásodat és az összes rá érkezett választ?</string>
     <string name="video_details_deleted">Hozzászólás törölve</string>
+    <string name="cookie_protect_title">Jelszóval véded a bejelentkezésed?</string>
+    <string name="cookie_protect_body">A bejelentkezésed ezen a számítógépen van mentve, ahol az általad futtatott más alkalmazások is olvashatják. Állíts be jelszót a zárolásához; a YMusic minden indításkor kérni fogja.</string>
+    <string name="cookie_password">Jelszó</string>
+    <string name="cookie_protect_confirm">Jelszó megerősítése</string>
+    <string name="cookie_protect_mismatch">A jelszavak nem egyeznek.</string>
+    <string name="cookie_protect_submit">Védelem</string>
+    <string name="cookie_protect_skip">Most nem</string>
+    <string name="cookie_unlock_title">Bejelentkezés feloldása</string>
+    <string name="cookie_unlock_body">A YouTube-bejelentkezésed jelszóval védett.</string>
+    <string name="cookie_unlock_submit">Feloldás</string>
+    <string name="cookie_unlock_wrong">Hibás jelszó.</string>
+    <string name="cookie_unlock_cant_unlock">Nem tudod feloldani?</string>
+    <string name="cookie_unlock_guest">Folytatás vendégként</string>
+    <string name="cookie_unlock_guest_hint">Kijelentkezve indul. Semmi sem marad meg.</string>
+    <string name="cookie_unlock_sign_out">Kijelentkezés</string>
+    <string name="cookie_unlock_sign_out_hint">Törli ezt a mentett bejelentkezést.</string>
+    <string name="cookie_unlock_sign_out_title">Kijelentkezel?</string>
+    <string name="cookie_unlock_sign_out_body">Ezzel törlöd a mentett bejelentkezést erről a számítógépről. Az újbóli bejelentkezéshez olvasd be a QR-kódot a YMusic alkalmazással.</string>
     <string name="menu_details_comments">Részletek és hozzászólások</string>
     <string name="menu_search_lyrics">Dalszöveg keresése</string>
     <string name="menu_speed_pitch">Sebesség és hangmagasság</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">Letöltés más formátumban</string>
     <string name="unsubscribe">Leiratkozás</string>
     <string name="unsubscribed">Leiratkozva</string>
+    <string name="tray_pause">Szünet</string>
+    <string name="tray_resume">Folytatás</string>
+    <string name="tray_stop">Leállítás (sor törlése)</string>
+    <string name="tray_quit">Bezárás</string>
+    <string name="shortcuts_title">Billentyűparancsok</string>
+    <string name="shortcuts_play_pause">Lejátszás / szünet</string>
+    <string name="shortcuts_now_playing">A Most szól képernyő megjelenítése vagy elrejtése</string>
+    <string name="shortcuts_nav_menu">A menü megnyitása vagy bezárása</string>
+    <string name="shortcuts_switch_tabs">Váltás a lapok között</string>
+    <string name="shortcuts_escape">Kilépés a teljes képernyőből, vagy a Most szól, a menü vagy egy felugró ablak bezárása</string>
+    <string name="shortcuts_help">A súgó megjelenítése</string>
+    <string name="shortcuts_volume_up">Hangerő fel</string>
+    <string name="shortcuts_volume_down">Hangerő le</string>
+    <string name="a11y_key_arrow_left">balra nyíl</string>
+    <string name="a11y_key_arrow_right">jobbra nyíl</string>
+    <string name="a11y_key_arrow_up">felfelé nyíl</string>
+    <string name="a11y_key_arrow_down">lefelé nyíl</string>
+    <string name="cd_always_on_top">Mindig felül</string>
+    <string name="settings_caption_size">Méret</string>
+    <string name="caption_size_preview">A feliratok így fognak kinézni</string>
+    <string name="settings_caption_style">Feliratstílus</string>
+    <string name="settings_caption_style_hint">A videófeliratok mérete, színe és háttere</string>
+    <string name="caption_text_color">Szövegszín</string>
+    <string name="caption_background">Háttér</string>
+    <string name="caption_background_opacity">Háttér átlátszatlansága</string>
+    <string name="download_quality_save">Takarékos</string>
+    <string name="download_quality_medium">Közepes</string>
+    <string name="download_quality_best">Legjobb</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">A Windows letiltotta a YMusic egy részét.</string>
+    <string name="media_engine_unavailable">A zene és a videók itt nem játszhatók le, de továbbra is böngészhetsz és kereshetsz.</string>
+    <string name="native_blocked_help">Munkahelyi vagy iskolai gépen kérd meg a rendszergazdát, hogy engedélyezze a YMusicot. A saját gépeden ellenőrizd a Smart App Control beállítást a Windows biztonságban.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Frissítés</string>
+    <string name="a11y_loading">Betöltés</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Összes kijelölése</string>
+    <string name="downloads_action_select">Kijelölés</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d kijelölve</item>
+        <item quantity="other">%1$d kijelölve</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Eltávolítasz %1$d letöltést a listáról?</item>
+        <item quantity="other">Eltávolítasz %1$d letöltést a listáról?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">A befejezett fájlok ezen az eszközön maradnak.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Törölsz %1$d fájlt?</item>
+        <item quantity="other">Törölsz %1$d fájlt?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">A törölt fájlok nem állíthatók vissza.</string>
+    <string name="downloads_cancel_selected">Letöltések megszakítása</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Megszakítasz %1$d letöltést?</item>
+        <item quantity="other">Megszakítasz %1$d letöltést?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">Az eddig letöltött rész törlődik.</string>
+    <string name="downloads_cancel_selected_keep">Megtartás</string>
+    <string name="data_dir_unusable">A YMusic nem tudja megnyitni az adatmappáját (%1$s). Győződj meg róla, hogy olyan mappa, amelybe írhatsz, majd nyisd meg újra a YMusicot. (%2$s)</string>
 </resources>

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.RecordVoiceOver
@@ -52,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,16 +70,17 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.ymusic.download.AudioOption
+import io.ymusic.download.AudioQuality
 import io.ymusic.download.CaptionOption
 import io.ymusic.download.DownloadFileNames
 import io.ymusic.download.DownloadFormat
 import io.ymusic.download.DownloadKind
 import io.ymusic.download.Mp3Encoding
 import io.ymusic.download.StillProcessingException
+import io.ymusic.download.captionsAsLyrics
 import io.ymusic.ui.resources.Res
 import io.ymusic.ui.resources.dialog_cancel
 import io.ymusic.ui.resources.download_action
@@ -96,6 +99,7 @@ import io.ymusic.ui.resources.download_failed
 import io.ymusic.ui.resources.download_file_name
 import io.ymusic.ui.resources.download_forbidden_hint
 import io.ymusic.ui.resources.download_format
+import io.ymusic.ui.resources.download_kbps
 import io.ymusic.ui.resources.download_less
 import io.ymusic.ui.resources.download_live_unsupported
 import io.ymusic.ui.resources.download_loading
@@ -105,6 +109,9 @@ import io.ymusic.ui.resources.download_more_qualities
 import io.ymusic.ui.resources.download_mp3_detail
 import io.ymusic.ui.resources.download_name_empty
 import io.ymusic.ui.resources.download_quality
+import io.ymusic.ui.resources.download_quality_best
+import io.ymusic.ui.resources.download_quality_medium
+import io.ymusic.ui.resources.download_quality_save
 import io.ymusic.ui.resources.download_rename
 import io.ymusic.ui.resources.download_save
 import io.ymusic.ui.resources.download_save_quick
@@ -117,6 +124,7 @@ import io.ymusic.ui.resources.playback_sign_in_required
 import io.ymusic.ui.resources.playback_unavailable
 import io.ymusic.ui.resources.retry
 import io.ymusic.ui.resources.signin_button
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import projectcommon.error.Playability
 import projectcommon.error.playabilityOf
@@ -173,6 +181,14 @@ internal fun DownloadSheet(
                                 containerChoices(state),
                             )
                         }
+                        if (state.showsAudioQuality) {
+                            DropdownOptionRow(
+                                Icons.Outlined.HighQuality,
+                                stringResource(Res.string.download_quality),
+                                audioQualityLabel(state),
+                                audioQualityChoices(state),
+                            )
+                        }
                         DropdownOptionRow(
                             Icons.Outlined.RecordVoiceOver,
                             stringResource(Res.string.download_audio_track),
@@ -210,7 +226,7 @@ private fun SheetHeader(state: DownloadOptionsState, onRename: () -> Unit) {
             ThumbImage(state.video.thumbs, RoundedCornerShape(8.dp)) {
                 ThumbPlaceholder(Icons.Outlined.MusicNote, 24.dp)
             }
-            Badges(state.video, Modifier.align(Alignment.BottomEnd).padding(DesignSpacing.Space4), textSize = 10, iconSize = 12.dp)
+            Badges(state.badgeItem, Modifier.align(Alignment.BottomEnd).padding(DesignSpacing.Space4), textSize = 10, iconSize = 12.dp)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DesignSpacing.Space4)) {
             Text(
@@ -221,8 +237,8 @@ private fun SheetHeader(state: DownloadOptionsState, onRename: () -> Unit) {
                 style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DesignColors.Ink, lineHeight = 20.sp),
             )
         }
-        IconButton(onClick = onRename) {
-            Icon(Icons.Outlined.Edit, stringResource(Res.string.download_edit_name), tint = DesignColors.InkSoft)
+        IconButton(onClick = onRename, modifier = Modifier.a11yActionLabel(stringResource(Res.string.download_edit_name))) {
+            Icon(Icons.Outlined.Edit, null, tint = DesignColors.InkSoft)
         }
     }
 }
@@ -327,12 +343,14 @@ private fun QualityGrid(state: DownloadOptionsState) {
     var expanded by remember { mutableStateOf(false) }
     val collapsible = video.size > QUALITY_COLLAPSE_OVER
     val shown = if (collapsible && !expanded) video.take(QUALITY_COLLAPSE_OVER - 1) else video
+    val focus = remember { LoadMoreFocus() }
+    focus.Settle(loading = false, count = video.size, controlShown = true)
     Column(verticalArrangement = Arrangement.spacedBy(DesignSpacing.Space8)) {
         SectionLabel(stringResource(Res.string.download_quality))
         val tiles: List<@Composable (Modifier) -> Unit> = buildList {
-            shown.forEach { option ->
+            shown.forEachIndexed { index, option ->
                 add { modifier ->
-                    Tile(option.label(), formatDownloadSize(if (state.format == DownloadFormat.VIDEO_WEBM) option.webmBytes ?: 0 else option.mp4Bytes), option.height == state.height, modifier) {
+                    Tile(option.label(), formatDownloadSize(if (state.format == DownloadFormat.VIDEO_WEBM) option.webmBytes ?: 0 else option.mp4Bytes), option.height == state.height, modifier.then(focus.item(index))) {
                         state.height = option.height
                     }
                 }
@@ -340,13 +358,19 @@ private fun QualityGrid(state: DownloadOptionsState) {
             if (collapsible) {
                 add { modifier ->
                     if (expanded) {
-                        MoreTile(stringResource(Res.string.download_less), null, modifier) { expanded = false }
+                        MoreTile(stringResource(Res.string.download_less), null, modifier.then(focus.control)) {
+                            focus.collapse()
+                            expanded = false
+                        }
                     } else {
                         MoreTile(
                             stringResource(Res.string.download_more_qualities, video.size - shown.size),
                             stringResource(Res.string.download_down_to, video.last().label()),
-                            modifier,
-                        ) { expanded = true }
+                            modifier.then(focus.control),
+                        ) {
+                            focus.reveal(shown.size)
+                            expanded = true
+                        }
                     }
                 }
             }
@@ -421,7 +445,6 @@ private fun AudioFormats(state: DownloadOptionsState, audio: List<AudioOption>) 
                     Text(option.format.displayName(), style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = DesignColors.Ink))
                     Text(option.detail(), style = TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary))
                 }
-                Text(formatDownloadSize(option.bytes), style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DesignColors.InkSecondary))
             }
         }
     }
@@ -439,27 +462,25 @@ internal fun DownloadFormat.displayName(): String = when (this) {
 internal fun AudioOption.detail(): String = when (format) {
     DownloadFormat.AUDIO_WEBM -> stringResource(Res.string.download_webm_detail)
     DownloadFormat.M4A -> stringResource(Res.string.download_m4a_detail)
-    DownloadFormat.MP3 -> stringResource(Res.string.download_mp3_detail, kbps ?: Mp3Encoding.ABR_320.kbps)
+    DownloadFormat.MP3 -> stringResource(Res.string.download_mp3_detail)
     DownloadFormat.VIDEO_WEBM, DownloadFormat.VIDEO_MP4 -> ""
 }
 
-/** An [OptionRow] that opens a dropdown of [choices] anchored under it. */
+/** An [OptionRow] that opens a dropdown of [choices] under its value. */
 @Composable
 private fun DropdownOptionRow(icon: ImageVector, title: String, value: String, choices: List<Choice>) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        OptionRow(icon, title, value) { open = true }
+    OptionRow(icon, title, value, onClick = { open = true }) {
         DropdownMenu(
             expanded = open,
             onDismissRequest = { open = false },
-            offset = DpOffset(x = DesignSpacing.Space48, y = 0.dp),
             containerColor = DesignColors.Surface,
         ) { ChoiceMenuItems(choices) { open = false } }
     }
 }
 
 @Composable
-private fun OptionRow(icon: ImageVector, title: String, value: String, onClick: () -> Unit) {
+private fun OptionRow(icon: ImageVector, title: String, value: String, onClick: () -> Unit, menu: @Composable () -> Unit = {}) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -470,26 +491,52 @@ private fun OptionRow(icon: ImageVector, title: String, value: String, onClick: 
     ) {
         Icon(icon, null, Modifier.size(20.dp), tint = DesignColors.InkSoft)
         Text(title, style = TextStyle(fontSize = 14.sp, color = DesignColors.Ink), maxLines = 1)
-        Text(
-            value,
-            Modifier.weight(1f),
-            style = TextStyle(fontSize = 14.sp, color = DesignColors.InkSecondary, textAlign = TextAlign.End),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            // The inner box hugs the text, so the menu anchors to the value, not the whole row.
+            Box {
+                Text(
+                    value,
+                    style = TextStyle(fontSize = 14.sp, color = DesignColors.InkSecondary, textAlign = TextAlign.End),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                menu()
+            }
+        }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(16.dp), tint = DesignColors.InkFaint)
     }
 }
 
-/** "English", "English · as lyrics" (MP3), or "Off". */
+/** "English", "English · as lyrics" (MP3, Opus), or "Off". */
 @Composable
 internal fun captionSummary(state: DownloadOptionsState): String {
     val name = state.options?.captions?.firstOrNull { it.key == state.caption }?.displayName()
         ?: return stringResource(Res.string.download_captions_off)
-    return if (state.format == DownloadFormat.MP3) stringResource(Res.string.download_captions_as_lyrics, name) else name
+    return if (state.format.captionsAsLyrics) stringResource(Res.string.download_captions_as_lyrics, name) else name
 }
 
 /** One pickable entry of an options dropdown. */
+/** MP3 names its bitrate; a stream's bitrate is whatever YouTube offers, so it names the tier. */
+@Composable
+internal fun AudioQuality.label(format: DownloadFormat): String = when {
+    format == DownloadFormat.MP3 -> stringResource(Res.string.download_kbps, Mp3Encoding.of(this).kbps)
+    this == AudioQuality.SAVE -> stringResource(Res.string.download_quality_save)
+    this == AudioQuality.MEDIUM -> stringResource(Res.string.download_quality_medium)
+    else -> stringResource(Res.string.download_quality_best)
+}
+
+@Composable
+internal fun audioQualityLabel(state: DownloadOptionsState): String =
+    state.selectedAudioQuality?.let { "${it.quality.label(state.audioFormat)} · ${formatDownloadSize(it.bytes)}" }.orEmpty()
+
+@Composable
+internal fun audioQualityChoices(state: DownloadOptionsState): List<Choice> {
+    val selected = state.selectedAudioQuality?.quality
+    return state.audioOption?.qualities.orEmpty().map { option ->
+        Choice("${option.quality.label(state.audioFormat)} · ${formatDownloadSize(option.bytes)}", option.quality == selected) { state.audioQuality = option.quality }
+    }
+}
+
 internal class Choice(val label: String, val selected: Boolean, val pick: () -> Unit)
 
 /** The chosen audio track's name — "Default" when the video has a single track. */
@@ -510,10 +557,30 @@ internal fun containerChoices(state: DownloadOptionsState): List<Choice> =
         Choice(container.displayName(), state.format == container) { state.container = container }
     }
 
+/** Off, the selected track, the tracks in the recent caption languages (the video's own, uploaded before
+ *  auto-generated, else its auto-translation), then the rest. Picking a track records its language, as Now
+ *  Playing does. */
 @Composable
-internal fun captionChoices(state: DownloadOptionsState): List<Choice> =
-    listOf(Choice(stringResource(Res.string.download_captions_off), state.caption == null) { state.caption = null }) +
-        state.options?.captions.orEmpty().map { track -> Choice(track.displayName(), track.key == state.caption) { state.caption = track.key } }
+internal fun captionChoices(state: DownloadOptionsState): List<Choice> {
+    val recent = rememberRecentCaptionLanguages(state.settings)
+    val scope = rememberCoroutineScope()
+    val tracks = state.options?.captions.orEmpty()
+    val selected = tracks.firstOrNull { it.key == state.caption }
+    val own = tracks.filter { !it.isTranslated }.sortedBy { it.isAsr }
+    val translated = tracks.filter { it.isTranslated }
+    val recentTracks = recent.mapNotNull { code ->
+        own.inRecentCaptionLanguages(listOf(code)) { it.languageCode }.firstOrNull()
+            ?: translated.inRecentCaptionLanguages(listOf(code)) { it.languageCode }.firstOrNull()
+    }
+    val ordered = (listOfNotNull(selected) + recentTracks + tracks).distinct()
+    return listOf(Choice(stringResource(Res.string.download_captions_off), state.caption == null) { state.caption = null }) +
+        ordered.map { track ->
+            Choice(track.displayName(), track.key == state.caption) {
+                state.caption = track.key
+                scope.launch { state.settings.recordRecentCaptionLanguage(track.languageCode) }
+            }
+        }
+}
 
 /** The track's name, marked when it is one of YouTube's auto-translations. */
 @Composable
@@ -561,7 +628,7 @@ private fun DownloadButton(state: DownloadOptionsState, onDownload: () -> Unit) 
     Button(
         onClick = onDownload,
         enabled = state.options != null && !state.isLive,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
+        modifier = Modifier.fillMaxWidth().height(52.dp).focusRing(RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(containerColor = downloadPrimary, contentColor = Color.White),
     ) {

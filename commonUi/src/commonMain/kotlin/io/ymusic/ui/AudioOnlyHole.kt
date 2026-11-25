@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -55,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
 import io.ymusic.imageloader.ImageRequest
 import io.ymusic.player.Player
@@ -63,15 +63,14 @@ import io.ymusic.player.showsVideo
 import io.ymusic.settings.AppSettings
 import io.ymusic.settings.SettingsStore
 import io.ymusic.settings.flow
-import io.ymusic.ui.resources.Res
-import io.ymusic.ui.resources.overlay_fps
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.stringResource
+import kotlinx.coroutines.withContext
 import kotlin.time.TimeSource
 
 private const val WAVE_BARS = 40
@@ -90,8 +89,8 @@ private fun windowVisible(): Boolean {
  */
 @Composable
 internal fun showsAudioOnly(player: Player): Boolean {
-    val config by player.config.collectAsState()
-    val quality by player.videoQuality.collectAsState()
+    val config by player.config.collectAsStateWithLifecycle()
+    val quality by player.videoQuality.collectAsStateWithLifecycle()
     val known = !showsVideo(config, quality)
     val tracksUnknown = quality.options.isEmpty() && quality.actualQuality == VideoQualityState.AUTO
     val last = remember { AudioOnlyMemo(known) }
@@ -109,7 +108,7 @@ internal fun AudioOnlyCover(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier.clip(RectangleShape).background(Color.Black),
+        modifier.clip(RectangleShape).background(DesignColors.Placeholder),
         contentAlignment = Alignment.Center,
     ) {
         ArtImage(url, RectangleShape)
@@ -126,8 +125,8 @@ internal fun AudioOnlyArtWave(
     url: String?,
     modifier: Modifier = Modifier,
 ) {
-    val status by player.status.collectAsState()
-    val sampling = status.playWhenReady && windowVisible()
+    val status by player.status.collectAsStateWithLifecycle()
+    val sampling = status.showsPause() && windowVisible()
     val levels by produceState(FloatArray(WAVE_BARS), player, sampling) {
         val buf = FloatArray(WAVE_BARS)
         if (!sampling) {
@@ -143,7 +142,8 @@ internal fun AudioOnlyArtWave(
             return@produceState
         }
         while (isActive) {
-            val n = player.pcmLevels(buf)
+            // Native: waits on the audio threads' locks.
+            val n = withContext(Dispatchers.Default) { player.pcmLevels(buf) }
             if (n > 0) {
                 if (n < buf.size) buf.fill(0f, n, buf.size)
                 value = buf.copyOf()
@@ -214,6 +214,9 @@ private class ArtTransition {
     var current by mutableStateOf<ImageBitmap?>(null)
     var url: String? = null
     var shading by mutableStateOf(false)
+
+    /** [url] is null or its load failed: the grey placeholder shows. */
+    var failed by mutableStateOf(false)
     val outAlpha = Animatable(1f)
     val inAlpha = Animatable(0f)
     val dim = Animatable(0f)
@@ -245,6 +248,7 @@ private fun rememberArtTransition(url: String?, decodeSize: IntSize): ArtTransit
                 state.current = null
             }
             state.url = url
+            state.failed = false
             state.shading = url != null
             listOf(
                 launch { state.outAlpha.animateTo(0f, tween(ART_FADE_OUT_MS, easing = FastOutSlowInEasing)) },
@@ -254,7 +258,9 @@ private fun rememberArtTransition(url: String?, decodeSize: IntSize): ArtTransit
             val held = shadeFrom.elapsedNow().inWholeMilliseconds
             if (held < ART_FADE_OUT_MS + ART_MIN_SHADE_MS) delay(ART_FADE_OUT_MS + ART_MIN_SHADE_MS - held)
             if (bitmap == null) {
+                state.previous = null
                 state.shading = false
+                state.failed = true
                 return@coroutineScope
             }
             state.inAlpha.snapTo(0f)
@@ -283,7 +289,7 @@ private fun rememberArtTransition(url: String?, decodeSize: IntSize): ArtTransit
 @Composable
 private fun PrefetchNextArt(player: Player, decodeSize: IntSize) {
     val loader = LocalImageLoader.current ?: return
-    val queue by player.queue.collectAsState()
+    val queue by player.queue.collectAsStateWithLifecycle()
     val nextUrl = queue.items.getOrNull(queue.currentIndex + 1)?.displayThumbnailUrl
     LaunchedEffect(nextUrl, decodeSize, loader) {
         if (nextUrl != null && decodeSize.width > 0 && decodeSize.height > 0) loader.prefetch(artRequest(nextUrl, decodeSize))
@@ -306,15 +312,22 @@ private fun BoxScope.ArtImageLayer(bitmap: ImageBitmap?, alpha: () -> Float) {
 /** The backdrop keeps the outgoing picture (dimmed) under the incoming one's fade-in. */
 @Composable
 private fun BoxScope.ArtBackdrop(art: ArtTransition) {
+    if (art.failed) ArtPlaceholder()
     ArtImageLayer(art.previous) { 1f }
     ArtImageLayer(art.current) { art.inAlpha.value }
     Box(Modifier.matchParentSize().graphicsLayer { alpha = art.dim.value }.background(Color.Black))
+}
+
+@Composable
+private fun BoxScope.ArtPlaceholder() {
+    Box(Modifier.matchParentSize().background(DesignColors.Placeholder))
 }
 
 /** The square fades the outgoing picture out over the shade, then the incoming one in. */
 @Composable
 private fun BoxScope.ArtSquare(art: ArtTransition) {
     if (art.shading) ArtShade()
+    if (art.failed) ArtPlaceholder()
     ArtImageLayer(art.previous) { art.outAlpha.value }
     ArtImageLayer(art.current) { art.inAlpha.value }
 }
@@ -367,31 +380,55 @@ internal fun PlayerSurfaceHole(
 
 @Composable
 private fun FpsBadge(player: Player, settings: SettingsStore, modifier: Modifier = Modifier) {
-    val enabled by settings.flow(AppSettings.showFps).collectAsState()
+    val enabled by settings.flow(AppSettings.showFps).collectAsStateWithLifecycle()
     if (!enabled) return
     FpsBadgeActive(player, modifier)
 }
 
+/** Pictures shown over the last second, dropped since the current item started, and the video decoder. */
+private data class FrameRate(val shown: Int, val dropped: Int, val decoder: String? = null)
+
+/** Dropped pictures summed over an item: the host's counter restarts with every load (a quality switch too). */
+private class DroppedTotal(var last: Int) {
+    var total = 0
+
+    fun add(counter: Int) {
+        total += if (counter >= last) counter - last else counter
+        last = counter
+    }
+}
+
 @Composable
 private fun FpsBadgeActive(player: Player, modifier: Modifier = Modifier) {
-    val status by player.status.collectAsState()
+    val status by player.status.collectAsStateWithLifecycle()
+    val queue by player.queue.collectAsStateWithLifecycle()
+    val item = queue.currentItem
+    val dropped = remember(item) { DroppedTotal(player.droppedFrames()) }
     val sampling = status.playWhenReady && windowVisible()
-    val fps by produceState(0, player, sampling) {
+    val rate by produceState(FrameRate(0, dropped.total), player, sampling, dropped) {
         if (!sampling) {
-            value = 0
+            value = FrameRate(0, dropped.total)
             return@produceState
         }
-        var prev = player.presentedFrames()
+        var prevShown = player.presentedFrames()
+        dropped.add(player.droppedFrames())
         while (isActive) {
             delay(1_000)
-            val n = player.presentedFrames()
-            value = (n - prev).coerceAtLeast(0)
-            prev = n
+            val shown = player.presentedFrames()
+            dropped.add(player.droppedFrames())
+            val decoder = player.videoDecoder()
+            value = FrameRate((shown - prevShown).coerceAtLeast(0), dropped.total, decoder)
+            prevShown = shown
         }
     }
-    if (fps <= 0) return
+    if (!sampling || (rate.shown <= 0 && rate.dropped <= 0)) return
     Text(
-        stringResource(Res.string.overlay_fps, fps),
+        // A developer readout, not localized.
+        listOfNotNull(
+            "${rate.shown} fps",
+            "${rate.dropped} dropped".takeIf { rate.dropped > 0 },
+            rate.decoder,
+        ).joinToString(" - "),
         style = TextStyle(fontSize = 13.sp, color = Color.White),
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.55f))

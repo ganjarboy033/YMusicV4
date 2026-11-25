@@ -30,7 +30,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,9 +90,7 @@ import okio.Sink
 import okio.Source
 import okio.buffer
 import okio.use
-import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import projectcommon.error.CodedError
 import projectcommon.error.TechnicalException
@@ -280,7 +277,7 @@ internal class PlaylistTransferState(
             if (result.playlists == 0) {
                 getString(Res.string.playlist_import_none_matched)
             } else {
-                getPluralString(Res.plurals.playlist_import_result, result.playlists, result.playlists, result.matched, result.total)
+                loadPluralText(Res.plurals.playlist_import_result, result.playlists, result.playlists, result.matched, result.total)
             },
         )
     }
@@ -289,7 +286,7 @@ internal class PlaylistTransferState(
         val create = graph.createDocument ?: return@runJob
         val sink = create(backupFileName(), BACKUP_MIME_TYPE) ?: return@runJob
         val count = writePlaylistBackup(store, sink, graph.appVersionName)
-        snackbar(getPluralString(Res.plurals.playlist_backup_result, count, count))
+        snackbar(loadPluralText(Res.plurals.playlist_backup_result, count, count))
     }
 
     fun openRestore() = scope.launch {
@@ -304,7 +301,7 @@ internal class PlaylistTransferState(
         store.restorePlaylists(backup.playlists, replaceAll)
         restorePreview = null
         onChanged()
-        snackbar(getPluralString(Res.plurals.playlist_restore_result, backup.playlists.size, backup.playlists.size))
+        snackbar(loadPluralText(Res.plurals.playlist_restore_result, backup.playlists.size, backup.playlists.size))
     }
 
     fun dismissRestore() {
@@ -341,9 +338,9 @@ internal class PlaylistTransferState(
 
 @Composable
 internal fun rememberPlaylistTransferState(store: BetterMediaStore, graph: AppGraph, onChanged: () -> Unit): PlaylistTransferState {
-    val scope = rememberCoroutineScope()
     val snackbar = LocalSnackbar.current
-    return remember(store, graph) { PlaylistTransferState(store, graph, scope, snackbar, onChanged) }
+    // The process scope: leaving the Library must not cancel a restore halfway through its writes.
+    return remember(store, graph) { PlaylistTransferState(store, graph, graph.processScope, snackbar, onChanged) }
 }
 
 @Composable
@@ -431,7 +428,7 @@ private fun ImportDevicePlaylistsDialog(
                     Column {
                         Text(playlist.name, style = TextStyle(fontSize = 14.sp, color = DesignColors.Ink), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            pluralStringResource(Res.plurals.n_songs, playlist.songCount, playlist.songCount),
+                            pluralText(Res.plurals.n_songs, playlist.songCount, playlist.songCount),
                             style = TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary),
                         )
                     }
@@ -491,8 +488,8 @@ private fun RestorePlaylistsDialog(
     ) {
         Column(Modifier.padding(vertical = DesignSpacing.Space8)) {
             val summary = listOfNotNull(
-                pluralStringResource(Res.plurals.n_playlists, backup.playlists.size, backup.playlists.size),
-                pluralStringResource(Res.plurals.n_songs, backup.songCount, backup.songCount),
+                pluralText(Res.plurals.n_playlists, backup.playlists.size, backup.playlists.size),
+                pluralText(Res.plurals.n_songs, backup.songCount, backup.songCount),
                 backup.exportedAt.takeIf { it > 0 }?.let { formatShortDate(it) },
             ).joinToString(" · ")
             Text(
@@ -514,7 +511,7 @@ private fun RestorePlaylistsDialog(
                     enabled = !busy,
                     title = stringResource(Res.string.playlist_restore_replace),
                     description = if (userPlaylistCount > 0) {
-                        pluralStringResource(Res.plurals.playlist_restore_replace_desc, userPlaylistCount, userPlaylistCount)
+                        pluralText(Res.plurals.playlist_restore_replace_desc, userPlaylistCount, userPlaylistCount)
                     } else {
                         stringResource(Res.string.playlist_restore_replace_desc_none)
                     },
@@ -603,7 +600,7 @@ internal fun NoPlaylistsHint(state: PlaylistTransferState) {
             verticalArrangement = Arrangement.spacedBy(DesignSpacing.Space8),
         ) {
             if (state.canImport) {
-                Button(onClick = state::openImport, enabled = !state.busy) { Text(stringResource(Res.string.playlist_menu_import_device)) }
+                Button(onClick = state::openImport, modifier = Modifier.focusRing(ButtonDefaults.shape), enabled = !state.busy) { Text(stringResource(Res.string.playlist_menu_import_device)) }
             }
             if (state.canRestore) {
                 OutlinedButton(

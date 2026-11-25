@@ -14,9 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -58,8 +59,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,6 +124,7 @@ internal class CommentList {
     var continuation by mutableStateOf<String?>(null)
     var loading by mutableStateOf(false)
     var errorCode by mutableStateOf<String?>(null)
+    val focus = LoadMoreFocus()
 }
 
 /** The watch page minus the player for [videoId]: details, then comments paged on demand. */
@@ -414,6 +421,7 @@ private fun VideoDetailsContent(
     LaunchedEffect(nearEnd, state.comments.comments.size) {
         if (nearEnd && state.comments.errorCode == null) state.loadMore(state.comments)
     }
+    state.comments.focus.Settle(state.comments.loading, state.comments.comments.size, controlShown = state.comments.errorCode != null)
     LazyColumn(modifier, state = listState) {
         when {
             details != null -> item("details") { DetailsHeader(state, details, onOpenChannel) }
@@ -436,49 +444,55 @@ private fun DetailsHeader(state: VideoDetailsState, details: YtVideoDetails, onO
             Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, color = DesignColors.InkStrong))
         }
         if (details.factoids.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space8)) {
                 details.factoids.forEach { factoid ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(factoid.value, style = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = DesignColors.Ink))
-                        Text(factoid.label, style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary))
-                    }
-                }
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space16),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val name = details.channelTitle
-            val url = details.channelUrl
-            Row(
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .then(if (name != null && url != null) Modifier.clickable { onOpenChannel(url, name) } else Modifier),
-                horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space16),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (name != null) {
-                    Avatar(details.channelThumbs, 40.dp)
-                    Column {
+                    val width = maxOf(factoid.value.length, factoid.label.length).coerceAtLeast(4).toFloat()
+                    Column(Modifier.weight(width).semantics(mergeDescendants = true) {}, horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            name,
-                            style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DesignColors.Ink),
-                            maxLines = 1,
+                            factoid.value,
+                            style = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold, color = DesignColors.Ink, textAlign = TextAlign.Center),
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        details.subscribers?.let {
-                            Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary))
+                        if (factoid.label.isNotEmpty()) {
+                            Text(
+                                factoid.label,
+                                style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary, textAlign = TextAlign.Center),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space8)) {
-                RatingPill(state, details)
-                LocalShareYoutube.current?.let { share -> SharePill { share(YtFeedItem.KIND_VIDEO, state.videoId) } }
+        }
+        details.channelTitle?.let { name ->
+            val url = details.channelUrl
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(if (url != null) Modifier.clickable { onOpenChannel(url, name) } else Modifier),
+                horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space16),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Avatar(details.channelThumbs, 40.dp)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        name,
+                        style = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DesignColors.Ink),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    details.subscribers?.let {
+                        Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space8)) {
+            RatingPill(state, details)
+            LocalShareYoutube.current?.let { share -> SharePill { share(YtFeedItem.KIND_VIDEO, state.videoId) } }
         }
         details.description?.takeIf { it.isNotBlank() }?.let { Description(it) }
         HorizontalDivider(color = DesignColors.Divider)
@@ -499,35 +513,32 @@ private fun RatingPill(state: VideoDetailsState, details: YtVideoDetails) {
         Modifier.clip(RoundedCornerShape(999.dp)).background(DesignColors.SurfaceDim),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val likeCount = if (liked) details.likeCountLiked ?: details.likeCount else details.likeCount
         Row(
             Modifier
-                .clickable { tap(YtVideoDetails.LIKE) }
+                .toggleable(value = liked, role = Role.Checkbox) { tap(YtVideoDetails.LIKE) }
+                .a11yActionLabel(listOfNotNull(stringResource(Res.string.video_details_like), likeCount).joinToString(", "))
                 .padding(horizontal = DesignSpacing.Space16, vertical = DesignSpacing.Space8),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space8),
         ) {
-            Icon(
-                if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                stringResource(Res.string.video_details_like),
-                Modifier.size(18.dp),
-                tint = ink,
-            )
-            (if (liked) details.likeCountLiked ?: details.likeCount else details.likeCount)?.let {
-                Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ink))
+            Icon(if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp, null, Modifier.size(18.dp), tint = ink)
+            likeCount?.let {
+                Text(
+                    it,
+                    style = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = ink),
+                    modifier = Modifier.a11ySilent(),
+                )
             }
         }
         Box(Modifier.size(width = 1.dp, height = 20.dp).background(DesignColors.Divider))
         Box(
             Modifier
-                .clickable { tap(YtVideoDetails.DISLIKE) }
+                .toggleable(value = disliked, role = Role.Checkbox) { tap(YtVideoDetails.DISLIKE) }
+                .a11yActionLabel(stringResource(Res.string.video_details_dislike))
                 .padding(horizontal = DesignSpacing.Space16, vertical = DesignSpacing.Space8),
         ) {
-            Icon(
-                if (disliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
-                stringResource(Res.string.video_details_dislike),
-                Modifier.size(18.dp),
-                tint = ink,
-            )
+            Icon(if (disliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown, null, Modifier.size(18.dp), tint = ink)
         }
     }
 }
@@ -539,9 +550,10 @@ private fun SharePill(onClick: () -> Unit) {
             .clip(RoundedCornerShape(999.dp))
             .background(DesignColors.SurfaceDim)
             .clickable(onClick = onClick)
+            .a11yActionLabel(stringResource(Res.string.cd_share))
             .padding(horizontal = DesignSpacing.Space16, vertical = DesignSpacing.Space8),
     ) {
-        Icon(Icons.Outlined.Share, stringResource(Res.string.cd_share), Modifier.size(18.dp), tint = DesignColors.Ink)
+        Icon(Icons.Outlined.Share, null, Modifier.size(18.dp), tint = DesignColors.Ink)
     }
 }
 
@@ -597,21 +609,31 @@ private fun LazyListScope.commentsSection(
             if (header != null) Composer(state, header)
         }
     }
-    items(state.comments.comments, key = { "c:" + it.id }) { comment ->
+    itemsIndexed(state.comments.comments, key = { _, comment -> "c:" + comment.id }) { index, comment ->
         Column {
-            CommentRow(state, comment, onOpenChannel, indent = false)
+            CommentRow(state, comment, onOpenChannel, indent = false, modifier = state.comments.focus.item(index))
             if (state.replyingTo == comment.id) ReplyComposer(state, comment)
-            if (comment.repliesContinuation != null) RepliesToggle(state, comment)
+            val toggle = remember { FocusRequester() }
+            if (comment.repliesContinuation != null) RepliesToggle(state, comment, toggle)
             state.replies[comment.id]?.let { list ->
-                list.comments.forEach { reply -> CommentRow(state, reply, onOpenChannel, indent = true) }
-                ListFooter(list, indent = true, moreLabel = stringResource(Res.string.video_details_more_replies)) { state.loadMore(list) }
+                list.comments.forEachIndexed { replyIndex, reply ->
+                    CommentRow(state, reply, onOpenChannel, indent = true, modifier = list.focus.item(replyIndex))
+                }
+                val moreLabel = stringResource(Res.string.video_details_more_replies)
+                ListFooter(list, indent = true, moreLabel = moreLabel) { state.loadMore(list) }
+                list.focus.Settle(
+                    list.loading,
+                    list.comments.size,
+                    controlShown = list.errorCode != null || list.continuation != null,
+                    fallback = toggle,
+                )
             }
         }
     }
     item("comments-footer") {
         val list = state.comments
         when {
-            list.loading || (list.errorCode == null && list.continuation != null) -> Spinner(Modifier.heightIn(min = 72.dp))
+            list.loading || (list.errorCode == null && list.continuation != null) -> Spinner(list.focus, Modifier.heightIn(min = 72.dp))
             list.errorCode != null -> ListFooter(list, indent = false, moreLabel = null) { state.loadMore(list) }
             state.header != null && list.comments.isEmpty() -> Text(
                 stringResource(Res.string.video_details_no_comments),
@@ -693,12 +715,16 @@ private fun CommentField(
             CircularProgressIndicator(Modifier.padding(DesignSpacing.Space8).size(24.dp), strokeWidth = 2.dp)
         } else {
             onCancel?.let {
-                IconButton(onClick = it) {
-                    Icon(Icons.Default.Close, stringResource(Res.string.dialog_cancel), tint = DesignColors.InkSecondary)
+                IconButton(onClick = it, modifier = Modifier.a11yActionLabel(stringResource(Res.string.dialog_cancel))) {
+                    Icon(Icons.Default.Close, null, tint = DesignColors.InkSecondary)
                 }
             }
-            IconButton(onClick = send, enabled = draft.isNotBlank() && draft.trim() != initial) {
-                Icon(Icons.AutoMirrored.Filled.Send, stringResource(Res.string.video_details_post), tint = DesignColors.Accent)
+            IconButton(
+                onClick = send,
+                enabled = draft.isNotBlank() && draft.trim() != initial,
+                modifier = Modifier.a11yActionLabel(stringResource(Res.string.video_details_post)),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Send, null, tint = DesignColors.Accent)
             }
         }
     }
@@ -710,12 +736,13 @@ private fun CommentRow(
     comment: YtComment,
     onOpenChannel: (url: String, title: String) -> Unit,
     indent: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val author = comment.author
     val authorUrl = comment.authorChannelUrl
     val openAuthor = if (author != null && authorUrl != null) Modifier.clickable { onOpenChannel(authorUrl, author) } else Modifier
     Row(
-        Modifier.fillMaxWidth().padding(
+        modifier.fillMaxWidth().padding(
             start = if (indent) DesignSpacing.Space48 + DesignSpacing.Space16 else DesignSpacing.Space16,
             end = DesignSpacing.Space16,
             top = DesignSpacing.Space8,
@@ -826,30 +853,40 @@ private fun CommentActions(state: VideoDetailsState, comment: YtComment, canRepl
             Row(
                 Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .then(if (canLike) Modifier.clickable { state.rateComment(comment, YtVideoDetails.LIKE) } else Modifier)
+                    .then(
+                        if (canLike) {
+                            Modifier.toggleable(value = liked, role = Role.Checkbox) { state.rateComment(comment, YtVideoDetails.LIKE) }
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .a11yActionLabel(listOfNotNull(stringResource(Res.string.video_details_like), count).joinToString(", "))
                     .padding(vertical = DesignSpacing.Space4, horizontal = if (canLike) DesignSpacing.Space4 else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space4),
             ) {
                 Icon(
                     if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                    stringResource(Res.string.video_details_like),
+                    null,
                     Modifier.size(14.dp),
                     tint = if (liked) DesignColors.Ink else muted,
                 )
-                count?.let { Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = muted)) }
+                count?.let {
+                    Text(it, style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = muted), modifier = Modifier.a11ySilent())
+                }
             }
         }
         if (canDislike) {
             Box(
                 Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .clickable { state.rateComment(comment, YtVideoDetails.DISLIKE) }
+                    .toggleable(value = disliked, role = Role.Checkbox) { state.rateComment(comment, YtVideoDetails.DISLIKE) }
+                    .a11yActionLabel(stringResource(Res.string.video_details_dislike))
                     .padding(DesignSpacing.Space4),
             ) {
                 Icon(
                     if (disliked) Icons.Filled.ThumbDown else Icons.Outlined.ThumbDown,
-                    stringResource(Res.string.video_details_dislike),
+                    null,
                     Modifier.size(14.dp),
                     tint = if (disliked) DesignColors.Ink else muted,
                 )
@@ -870,7 +907,7 @@ private fun CommentActions(state: VideoDetailsState, comment: YtComment, canRepl
 }
 
 @Composable
-private fun RepliesToggle(state: VideoDetailsState, comment: YtComment) {
+private fun RepliesToggle(state: VideoDetailsState, comment: YtComment, focusRequester: FocusRequester) {
     val open = state.replies.containsKey(comment.id)
     Text(
         if (open) stringResource(Res.string.video_details_hide_replies) else stringResource(Res.string.video_details_replies, comment.replyCount.orEmpty()),
@@ -878,7 +915,11 @@ private fun RepliesToggle(state: VideoDetailsState, comment: YtComment) {
         modifier = Modifier
             .padding(start = DesignSpacing.Space48 + DesignSpacing.Space16)
             .clip(RoundedCornerShape(999.dp))
-            .clickable { state.toggleReplies(comment) }
+            .focusRequester(focusRequester)
+            .clickable {
+                state.toggleReplies(comment)
+                state.replies[comment.id]?.focus?.start(0)
+            }
             .padding(horizontal = DesignSpacing.Space8, vertical = DesignSpacing.Space4),
     )
 }
@@ -887,13 +928,17 @@ private fun RepliesToggle(state: VideoDetailsState, comment: YtComment) {
 @Composable
 private fun ListFooter(list: CommentList, indent: Boolean, moreLabel: String?, onMore: () -> Unit) {
     val start = if (indent) DesignSpacing.Space48 + DesignSpacing.Space16 else DesignSpacing.Space16
+    val more = {
+        list.focus.start(list.comments.size)
+        onMore()
+    }
     when {
-        list.loading -> Spinner(Modifier.padding(start = start).heightIn(min = 48.dp))
+        list.loading -> Spinner(list.focus, Modifier.padding(start = start).heightIn(min = 48.dp))
         list.errorCode != null -> Row(Modifier.padding(start = start), verticalAlignment = Alignment.CenterVertically) {
             Text(errorMessage(list.errorCode!!), style = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, color = DesignColors.InkSecondary))
-            TextButton(onClick = onMore) { Text(stringResource(Res.string.retry)) }
+            TextButton(onClick = more, modifier = list.focus.control) { Text(stringResource(Res.string.retry)) }
         }
-        list.continuation != null && moreLabel != null -> TextButton(onClick = onMore, modifier = Modifier.padding(start = start)) {
+        list.continuation != null && moreLabel != null -> TextButton(onClick = more, modifier = Modifier.padding(start = start).then(list.focus.control)) {
             Text(moreLabel, color = DesignColors.Accent)
         }
     }
@@ -910,5 +955,12 @@ private fun Avatar(thumbs: List<io.ymusic.dynamicengine.yt.YtThumb>, size: andro
 private fun Spinner(modifier: Modifier) {
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
+    }
+}
+
+@Composable
+private fun Spinner(focus: LoadMoreFocus, modifier: Modifier) {
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        LoadingMoreIndicator(focus) { CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp) }
     }
 }

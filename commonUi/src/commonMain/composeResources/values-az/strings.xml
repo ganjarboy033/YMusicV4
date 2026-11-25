@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Hələ endirmə yoxdur</string>
     <string name="downloads_none_message">Endirilmiş mahnı və videolar oflayn oxunur.</string>
     <string name="downloads_failed">Endirmə alınmadı</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Finder-də göstər</string>
+    <string name="menu_reveal_explorer">Fayl Bələdçisində göstər</string>
+    <string name="menu_reveal_file_manager">Fayl menecerində göstər</string>
     <string name="section_settings">Tənzimləmələr</string>
     <string name="section_donate">İanə et</string>
     <string name="section_feedback">Rəy</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">%1$s pleylistdən silindi</string>
     <string name="cd_add_to_playlist">Pleylistə əlavə et</string>
     <string name="cd_share">Paylaş</string>
-    <string name="cd_music_video">Musiqi</string>
-    <string name="cd_album">Albom</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Video</string>
+    <string name="a11y_kind_music_video">Musiqi videosu</string>
+    <string name="a11y_kind_live">Canlı yayım</string>
+    <string name="a11y_kind_playlist">Pleylist</string>
+    <string name="a11y_kind_album">Albom</string>
+    <string name="a11y_kind_mix">Miks</string>
+    <string name="a11y_kind_channel">Kanal</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d saat</item>
+        <item quantity="other">%1$d saat</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d dəqiqə</item>
+        <item quantity="other">%1$d dəqiqə</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d saniyə</item>
+        <item quantity="other">%1$d saniyə</item>
+    </plurals>
+    <string name="a11y_now_playing">İndi oxunur</string>
+    <string name="a11y_playback_position">Oxutma mövqeyi</string>
+    <string name="a11y_x_of_y">%1$s, cəmi %2$s</string>
+    <string name="a11y_behind_live">Canlı yayımdan %1$s geridə</string>
+    <string name="a11y_downloaded">Yüklənib</string>
+    <string name="a11y_eq_preamp">Ön gücləndirici</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Qovluqlar</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">Pleylistdən sil</string>
     <string name="playlist_delete_title">Pleylist silinsin?</string>
     <string name="playlist_delete_message">“%1$s” silinəcək. Mahnılar kitabxananızda qalacaq.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">%1$d mahnı pleylistdən silinsin?</item>
+        <item quantity="other">%1$d mahnı pleylistdən silinsin?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">Mahnılar kitabxananızda qalacaq.</string>
     <string name="add_to_playlist_new">Yeni pleylist…</string>
     <string name="playlist_recent_play">Son oxudulanlar</string>
     <string name="playlist_top_tracks">Top mahnılar</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">Sazlama</string>
     <string name="settings_show_fps">FPS-i göstər</string>
     <string name="settings_show_fps_hint">İndi oxudulur videosunun üzərində saniyədəki kadr sayını göstərir. Fasilədə və ya ekrandan çıxdıqda ölçmə dayanır.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Açıq mənbə lisenziyaları</string>
     <string name="settings_terms">Şərtlər və məxfilik</string>
     <string name="settings_licenses_intro">YMusic GNU GPL v3.0 lisenziyası ilə açıq mənbəlidir. Aşağıdakı komponentləri ehtiva edir:</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">Axtar</string>
     <string name="cd_back">Geri</string>
     <string name="cd_clear">Təmizlə</string>
+    <string name="cd_voice_search">Səslə axtar</string>
+    <string name="voice_search_press_ok">Səslə axtarmaq üçün OK düyməsini basın</string>
+    <string name="voice_search_listening">Dinlənilir…</string>
+    <string name="voice_search_missed">Başa düşülmədi. Yenidən cəhd etmək üçün OK düyməsini basın</string>
     <string name="cd_close">Bağla</string>
     <string name="cd_more">Daha çox</string>
     <string name="cd_collapse">Yığ</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">Yüklə</string>
     <string name="cd_fullscreen">Tam ekran</string>
     <string name="cd_exit_fullscreen">Tam ekrandan çıx</string>
+    <string name="cd_show_queue">Növbəni göstər</string>
+    <string name="cd_hide_queue">Növbəni gizlət</string>
     <string name="cd_fit_video">Videonu sığdır</string>
     <string name="cd_fill_video">Ekranı doldur</string>
-    <string name="cd_lock_rotation">Fırlanmanı kilidlə</string>
-    <string name="cd_unlock_rotation">Fırlanma kilidini aç</string>
+    <string name="cd_screen_rotation">Ekranın fırlanması</string>
+    <string name="rotation_lock_landscape">Üfüqi rejimi kilidlə</string>
+    <string name="rotation_lock_portrait">Şaquli rejimi kilidlə</string>
+    <string name="rotation_free">Sərbəst fırlanma</string>
     <string name="cd_rewind10">10 saniyə geri</string>
     <string name="cd_forward10">10 saniyə irəli</string>
     <string name="cd_repeat_off">Təkrarla: söndürülüb</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">Çıxış</string>
     <string name="account_switch">Hesabı dəyiş</string>
     <string name="switch_account_hint">İstədiyiniz hesabı seçin, sonra bu ekranı geri oxu ilə bağlayın — tətbiq yeni hesabla yenilənəcək.</string>
-    <string name="cd_account_avatar">Hesab şəkli</string>
     <string name="account_my_channel">Kanalım</string>
     <string name="account_watch_history">Baxış tarixçəsi</string>
     <string name="account_watch_later">Sonra bax</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">Digər tətbiqlər səs çalanda dayandır</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">YouTube videolarında sponsorlu hissələri avtomatik keçir. Bir video üçün İndi oxudulur ekranından söndürün.</string>
+    <string name="settings_stable_volume">Sabit səs səviyyəsi</string>
+    <string name="settings_stable_volume_hint">Yüksək və sakit hissələri bərabərləşdirir, hər mahnını oxşar səs səviyyəsində oxudur.</string>
     <string name="sponsor_block_included">SponsorBlock bu video üçün aktivdir</string>
     <string name="sponsor_block_excluded">SponsorBlock bu video üçün deaktivdir</string>
     <string name="settings_sound">Səs</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d daha</string>
     <string name="download_down_to">%1$s-ə qədər</string>
     <string name="download_less">Daha az</string>
-    <string name="download_webm_detail">WebM · orijinal axın</string>
+    <string name="download_webm_detail">Opus · orijinal axın</string>
     <string name="download_m4a_detail">AAC · orijinal axın</string>
-    <string name="download_mp3_detail">%1$d kbps · hər yerdə oxunur</string>
-    <string name="settings_mp3_source_bitrate">MP3-ü orijinal bitreytlə endir</string>
-    <string name="settings_mp3_source_bitrate_hint">MP3-ü 320 kbps əvəzinə təxminən 256 kbps (dəyişən bitreyt) ilə kodla. Daha kiçik fayllar, eyni keyfiyyət.</string>
+    <string name="download_mp3_detail">Hər yerdə oxunur</string>
     <string name="download_audio_track">Audio trek</string>
     <string name="download_captions">Subtitrlər</string>
     <string name="download_captions_off">Bağlı</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">Mövcud deyil</string>
     <string name="dialog_ok_done">Hazır</string>
     <string name="download_captions_as_lyrics">%1$s · mahnı sözləri kimi</string>
-    <string name="download_lyrics_note">MP3 subtitrləri mahnı sözləri kimi saxlayır; onları mahnı sözlərini oxuyan pleyerlər göstərir.</string>
+    <string name="download_lyrics_note">Bu format subtitrləri mahnı sözləri kimi saxlayır; onları mahnı sözlərini oxuyan pleyerlər göstərir.</string>
     <string name="download_caption_translated">%1$s (avtomatik tərcümə)</string>
     <string name="download_live_unsupported">CANLI videonu yükləmək olmur</string>
     <string name="download_save_quick">Sürətli yükləmə kimi saxla</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">Sistemin Fayllar tətbiqi deaktivdir. Qovluq seçmək üçün onu aktivləşdirin.</string>
     <string name="folder_picker_open_settings">Ayarları aç</string>
+    <string name="folder_picker_title">Musiqi qovluğu seçin</string>
+    <string name="folder_picker_use_folder">Bu qovluqdan istifadə et</string>
+    <string name="folder_picker_empty">Burada qovluq yoxdur</string>
+    <string name="folder_picker_storage_denied">Qovluq seçmək üçün ayarlarda musiqi fayllarınıza giriş icazəsi verin.</string>
+    <string name="folder_picker_companion_message">Bu cihazda qovluq seçicisi yoxdur. Qovluq seçmək üçün YMusic üçün kiçik köməkçi olan YMusic Files-ı bu keçiddən endirib quraşdırın, sonra yenidən cəhd edin.</string>
+    <string name="folder_picker_companion_update">YMusic Files-ın YMusic-in bu versiyası ilə işləməsi üçün yenilənməsi lazımdır. Ən son versiyanı bu keçiddən endirib quraşdırın, sonra yenidən cəhd edin.</string>
+    <string name="folder_picker_companion_open">Keçidi aç</string>
     <string name="folder_picker_missing">Bu cihazda qovluq seçicisi yoxdur, ona görə qovluq seçmək mümkün deyil.</string>
     <string name="error_supervised_account">Bu Google hesabı nəzarət altındadır, ona görə də YouTube burada istifadə edilə bilməz. Hesabdan çıxın və ya başqa hesaba keçin.</string>
     <string name="settings_player_cache">Pleyer keşi</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">Şərhi sil</string>
     <string name="video_details_delete_message">Şərhiniz və bütün cavabları həmişəlik silinsin?</string>
     <string name="video_details_deleted">Şərh silindi</string>
+    <string name="cookie_protect_title">Girişiniz parol ilə qorunsun?</string>
+    <string name="cookie_protect_body">Girişiniz bu kompüterdə saxlanılıb və işlətdiyiniz digər tətbiqlər onu oxuya bilər. Onu kilidləmək üçün parol təyin edin; YMusic hər açılışda onu soruşacaq.</string>
+    <string name="cookie_password">Parol</string>
+    <string name="cookie_protect_confirm">Parolu təsdiqləyin</string>
+    <string name="cookie_protect_mismatch">Parollar uyğun gəlmir.</string>
+    <string name="cookie_protect_submit">Qoru</string>
+    <string name="cookie_protect_skip">İndi yox</string>
+    <string name="cookie_unlock_title">Girişinizin kilidini açın</string>
+    <string name="cookie_unlock_body">YouTube girişiniz parol ilə qorunur.</string>
+    <string name="cookie_unlock_submit">Kilidi aç</string>
+    <string name="cookie_unlock_wrong">Yanlış parol.</string>
+    <string name="cookie_unlock_cant_unlock">Kilidi aça bilmirsiniz?</string>
+    <string name="cookie_unlock_guest">Qonaq kimi davam et</string>
+    <string name="cookie_unlock_guest_hint">Hesaba daxil olmadan başlayır. Heç nə saxlanılmır.</string>
+    <string name="cookie_unlock_sign_out">Çıxış</string>
+    <string name="cookie_unlock_sign_out_hint">Bu saxlanılmış girişi silir.</string>
+    <string name="cookie_unlock_sign_out_title">Çıxış edilsin?</string>
+    <string name="cookie_unlock_sign_out_body">Bu, saxlanılmış girişi bu kompüterdən silir. Yenidən daxil olmaq üçün QR kodu YMusic tətbiqi ilə skan edin.</string>
     <string name="menu_details_comments">Təfərrüatlar və şərhlər</string>
     <string name="menu_search_lyrics">Mahnı sözlərini axtar</string>
     <string name="menu_speed_pitch">Sürət və ton</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">Başqa formatda endir</string>
     <string name="unsubscribe">Abunəlikdən çıx</string>
     <string name="unsubscribed">Abunəlik ləğv edildi</string>
+    <string name="tray_pause">Fasilə</string>
+    <string name="tray_resume">Davam et</string>
+    <string name="tray_stop">Dayandır (növbəni təmizlə)</string>
+    <string name="tray_quit">Bağla</string>
+    <string name="shortcuts_title">Klaviatura qısayolları</string>
+    <string name="shortcuts_play_pause">Oxut / fasilə</string>
+    <string name="shortcuts_now_playing">İndi oxudulur ekranını göstər və ya gizlət</string>
+    <string name="shortcuts_nav_menu">Menyunu aç və ya bağla</string>
+    <string name="shortcuts_switch_tabs">Tablar arasında keç</string>
+    <string name="shortcuts_escape">Tam ekrandan çıx və ya İndi oxudulur ekranını, menyunu, yaxud açılan pəncərəni bağla</string>
+    <string name="shortcuts_help">Bu yardımı göstər</string>
+    <string name="shortcuts_volume_up">Səsi artır</string>
+    <string name="shortcuts_volume_down">Səsi azalt</string>
+    <string name="a11y_key_arrow_left">sol ox</string>
+    <string name="a11y_key_arrow_right">sağ ox</string>
+    <string name="a11y_key_arrow_up">yuxarı ox</string>
+    <string name="a11y_key_arrow_down">aşağı ox</string>
+    <string name="cd_always_on_top">Həmişə üstdə</string>
+    <string name="settings_caption_size">Ölçü</string>
+    <string name="caption_size_preview">Altyazılar belə görünəcək</string>
+    <string name="settings_caption_style">Altyazı üslubu</string>
+    <string name="settings_caption_style_hint">Video altyazılarının ölçüsü, rəngi və fonu</string>
+    <string name="caption_text_color">Mətn rəngi</string>
+    <string name="caption_background">Fon</string>
+    <string name="caption_background_opacity">Fonun qeyri-şəffaflığı</string>
+    <string name="download_quality_save">Qənaət</string>
+    <string name="download_quality_medium">Orta</string>
+    <string name="download_quality_best">Ən yaxşı</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows YMusic-in bir hissəsini blokladı.</string>
+    <string name="media_engine_unavailable">Musiqi və videolar burada oxudula bilmir, amma yenə də baxa və axtarış edə bilərsiniz.</string>
+    <string name="native_blocked_help">İş və ya məktəb kompüterində administratordan YMusic-ə icazə verməsini xahiş edin. Öz kompüterinizdə Windows Security bölməsində Smart App Control-u yoxlayın.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Yenilənir</string>
+    <string name="a11y_loading">Yüklənir</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Hamısını seç</string>
+    <string name="downloads_action_select">Seç</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d seçildi</item>
+        <item quantity="other">%1$d seçildi</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">%1$d yükləmə siyahıdan silinsin?</item>
+        <item quantity="other">%1$d yükləmə siyahıdan silinsin?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Tamamlanmış fayllar bu cihazda qalır.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">%1$d fayl silinsin?</item>
+        <item quantity="other">%1$d fayl silinsin?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Silinmiş faylları bərpa etmək mümkün deyil.</string>
+    <string name="downloads_cancel_selected">Yükləmələri ləğv et</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">%1$d yükləmə ləğv edilsin?</item>
+        <item quantity="other">%1$d yükləmə ləğv edilsin?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">İndiyədək yüklənənlər silinəcək.</string>
+    <string name="downloads_cancel_selected_keep">Saxla</string>
+    <string name="data_dir_unusable">YMusic məlumat qovluğunu (%1$s) aça bilmir. Bunun yaza biləcəyiniz qovluq olduğuna əmin olun, sonra YMusic-i yenidən açın. (%2$s)</string>
 </resources>

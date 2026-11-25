@@ -23,6 +23,10 @@
     <string name="downloads_none_title">હજી કોઈ ડાઉનલોડ નથી</string>
     <string name="downloads_none_message">ડાઉનલોડ કરેલાં ગીતો અને વીડિયો ઑફલાઇન ચાલે છે.</string>
     <string name="downloads_failed">ડાઉનલોડ નિષ્ફળ</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Finder માં બતાવો</string>
+    <string name="menu_reveal_explorer">ફાઇલ એક્સપ્લોરરમાં બતાવો</string>
+    <string name="menu_reveal_file_manager">ફાઇલ મેનેજરમાં બતાવો</string>
     <string name="section_settings">સેટિંગ્સ</string>
     <string name="section_donate">દાન કરો</string>
     <string name="section_feedback">પ્રતિસાદ</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">પ્લેલિસ્ટમાંથી %1$s દૂર કર્યું</string>
     <string name="cd_add_to_playlist">પ્લેલિસ્ટમાં ઉમેરો</string>
     <string name="cd_share">શેર કરો</string>
-    <string name="cd_music_video">મ્યુઝિક</string>
-    <string name="cd_album">આલ્બમ</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">વીડિયો</string>
+    <string name="a11y_kind_music_video">મ્યુઝિક વીડિયો</string>
+    <string name="a11y_kind_live">લાઇવ વીડિયો</string>
+    <string name="a11y_kind_playlist">પ્લેલિસ્ટ</string>
+    <string name="a11y_kind_album">આલ્બમ</string>
+    <string name="a11y_kind_mix">મિક્સ</string>
+    <string name="a11y_kind_channel">ચૅનલ</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d કલાક</item>
+        <item quantity="other">%1$d કલાક</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d મિનિટ</item>
+        <item quantity="other">%1$d મિનિટ</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d સેકન્ડ</item>
+        <item quantity="other">%1$d સેકન્ડ</item>
+    </plurals>
+    <string name="a11y_now_playing">હમણાં ચાલી રહ્યું છે</string>
+    <string name="a11y_playback_position">પ્લેબેકની સ્થિતિ</string>
+    <string name="a11y_x_of_y">%2$s માંથી %1$s</string>
+    <string name="a11y_behind_live">લાઇવથી %1$s પાછળ</string>
+    <string name="a11y_downloaded">ડાઉનલોડ કરેલું</string>
+    <string name="a11y_eq_preamp">પ્રીએમ્પ</string>
 
     <!-- Library -->
     <string name="library_tab_folders">ફોલ્ડર</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">પ્લેલિસ્ટમાંથી દૂર કરો</string>
     <string name="playlist_delete_title">પ્લેલિસ્ટ કાઢી નાખીએ?</string>
     <string name="playlist_delete_message">“%1$s” દૂર કરવામાં આવશે. ગીતો તમારી લાઇબ્રેરીમાં રહેશે.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">પ્લેલિસ્ટમાંથી %1$d ગીત દૂર કરીએ?</item>
+        <item quantity="other">પ્લેલિસ્ટમાંથી %1$d ગીતો દૂર કરીએ?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">ગીતો તમારી લાઇબ્રેરીમાં રહેશે.</string>
     <string name="add_to_playlist_new">નવું પ્લેલિસ્ટ…</string>
     <string name="playlist_recent_play">તાજેતરમાં વગાડેલા</string>
     <string name="playlist_top_tracks">ટોચના ટ્રેક</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">ડીબગ</string>
     <string name="settings_show_fps">FPS બતાવો</string>
     <string name="settings_show_fps_hint">Now Playing વીડિયો પર પ્રતિ સેકન્ડ ફ્રેમ બતાવો. થોભાવો અથવા તે સ્ક્રીન છોડો ત્યારે માપન બંધ થાય છે.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">ઓપન સોર્સ લાઇસન્સ</string>
     <string name="settings_terms">શરતો અને ગોપનીયતા</string>
     <string name="settings_licenses_intro">YMusic GNU GPL v3.0 હેઠળ ઓપન સોર્સ છે. તેમાં આ ઘટકો શામેલ છે:</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">શોધો</string>
     <string name="cd_back">પાછળ</string>
     <string name="cd_clear">સાફ કરો</string>
+    <string name="cd_voice_search">અવાજથી શોધો</string>
+    <string name="voice_search_press_ok">અવાજથી શોધવા માટે OK દબાવો</string>
+    <string name="voice_search_listening">સાંભળી રહ્યાં છીએ…</string>
+    <string name="voice_search_missed">સમજાયું નહીં. ફરી પ્રયાસ કરવા માટે OK દબાવો</string>
     <string name="cd_close">બંધ કરો</string>
     <string name="cd_more">વધુ</string>
     <string name="cd_collapse">સંકુચિત કરો</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">ડાઉનલોડ</string>
     <string name="cd_fullscreen">પૂર્ણ સ્ક્રીન</string>
     <string name="cd_exit_fullscreen">પૂર્ણ સ્ક્રીનમાંથી બહાર નીકળો</string>
+    <string name="cd_show_queue">કતાર બતાવો</string>
+    <string name="cd_hide_queue">કતાર છુપાવો</string>
     <string name="cd_fit_video">વીડિયો ફિટ કરો</string>
     <string name="cd_fill_video">સ્ક્રીન ભરો</string>
-    <string name="cd_lock_rotation">રોટેશન લૉક કરો</string>
-    <string name="cd_unlock_rotation">રોટેશન અનલૉક કરો</string>
+    <string name="cd_screen_rotation">સ્ક્રીન ફેરવવી</string>
+    <string name="rotation_lock_landscape">લેન્ડસ્કેપમાં લૉક કરો</string>
+    <string name="rotation_lock_portrait">પોર્ટ્રેટમાં લૉક કરો</string>
+    <string name="rotation_free">મુક્ત રીતે ફેરવો</string>
     <string name="cd_rewind10">10 સેકન્ડ પાછળ</string>
     <string name="cd_forward10">10 સેકન્ડ આગળ</string>
     <string name="cd_repeat_off">પુનરાવર્તન: બંધ</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">સાઇન આઉટ</string>
     <string name="account_switch">એકાઉન્ટ બદલો</string>
     <string name="switch_account_hint">તમને જોઈતું એકાઉન્ટ પસંદ કરો, પછી પાછળના તીરથી આ સ્ક્રીન બંધ કરો — ઍપ નવા એકાઉન્ટ હેઠળ રિફ્રેશ થશે.</string>
-    <string name="cd_account_avatar">એકાઉન્ટનો ફોટો</string>
     <string name="account_my_channel">મારી ચૅનલ</string>
     <string name="account_watch_history">જોવાનો ઇતિહાસ</string>
     <string name="account_watch_later">પછીથી જુઓ</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">અન્ય ઍપ અવાજ વગાડે ત્યારે થોભાવો</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">YouTube વીડિયોમાં સ્પૉન્સર કરેલા ભાગો આપમેળે છોડો. Now Playing માંથી કોઈ વીડિયો માટે બંધ કરો.</string>
+    <string name="settings_stable_volume">સ્થિર વૉલ્યૂમ</string>
+    <string name="settings_stable_volume_hint">મોટા અને ધીમા ભાગોને સરખા કરે છે અને દરેક ગીતને લગભગ સમાન અવાજે વગાડે છે.</string>
     <string name="sponsor_block_included">આ વીડિયો માટે SponsorBlock ચાલુ</string>
     <string name="sponsor_block_excluded">આ વીડિયો માટે SponsorBlock બંધ</string>
     <string name="settings_sound">સાઉન્ડ</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d વધુ</string>
     <string name="download_down_to">%1$s સુધી</string>
     <string name="download_less">ઓછું</string>
-    <string name="download_webm_detail">WebM · મૂળ સ્ટ્રીમ</string>
+    <string name="download_webm_detail">Opus · મૂળ સ્ટ્રીમ</string>
     <string name="download_m4a_detail">AAC · મૂળ સ્ટ્રીમ</string>
-    <string name="download_mp3_detail">%1$d kbps · બધે ચાલે છે</string>
-    <string name="settings_mp3_source_bitrate">મૂળ બિટરેટ પર MP3 ડાઉનલોડ કરો</string>
-    <string name="settings_mp3_source_bitrate_hint">320 kbps ને બદલે લગભગ 256 kbps (ચલ બિટરેટ) પર MP3 એન્કોડ કરો. નાની ફાઇલો, એ જ ગુણવત્તા.</string>
+    <string name="download_mp3_detail">બધે ચાલે છે</string>
     <string name="download_audio_track">ઑડિયો ટ્રેક</string>
     <string name="download_captions">કૅપ્શન</string>
     <string name="download_captions_off">બંધ</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">કોઈ ઉપલબ્ધ નથી</string>
     <string name="dialog_ok_done">થઈ ગયું</string>
     <string name="download_captions_as_lyrics">%1$s · ગીતના શબ્દો તરીકે</string>
-    <string name="download_lyrics_note">MP3 કૅપ્શનને ગીતના શબ્દો તરીકે રાખે છે, જે ગીતના શબ્દો વાંચતા પ્લેયરમાં દેખાય છે.</string>
+    <string name="download_lyrics_note">આ ફોર્મેટ કૅપ્શનને ગીતના શબ્દો તરીકે રાખે છે, જે ગીતના શબ્દો વાંચતા પ્લેયરમાં દેખાય છે.</string>
     <string name="download_caption_translated">%1$s (સ્વતઃ અનુવાદિત)</string>
     <string name="download_live_unsupported">લાઇવ વીડિયો ડાઉનલોડ કરી શકાતો નથી</string>
     <string name="download_save_quick">ઝડપી ડાઉનલોડ તરીકે સેવ કરો</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">ઓકે</string>
     <string name="folder_picker_disabled">સિસ્ટમની Files ઍપ બંધ છે. ફોલ્ડર પસંદ કરવા માટે તેને ચાલુ કરો.</string>
     <string name="folder_picker_open_settings">સેટિંગ્સ ખોલો</string>
+    <string name="folder_picker_title">સંગીત ફોલ્ડર પસંદ કરો</string>
+    <string name="folder_picker_use_folder">આ ફોલ્ડરનો ઉપયોગ કરો</string>
+    <string name="folder_picker_empty">અહીં કોઈ ફોલ્ડર નથી</string>
+    <string name="folder_picker_storage_denied">ફોલ્ડર પસંદ કરવા માટે સેટિંગ્સમાં તમારી મ્યુઝિક ફાઇલોની ઍક્સેસ આપો.</string>
+    <string name="folder_picker_companion_message">આ ડિવાઇસમાં ફોલ્ડર પસંદગીકાર નથી. ફોલ્ડર પસંદ કરવા માટે આ લિંક પરથી YMusic માટેની નાની સહાયક ઍપ YMusic Files ડાઉનલોડ કરીને ઇન્સ્ટૉલ કરો, પછી ફરી પ્રયાસ કરો.</string>
+    <string name="folder_picker_companion_update">YMusicના આ વર્ઝન સાથે કામ કરવા માટે YMusic Filesને અપડેટ કરવાની જરૂર છે. આ લિંક પરથી નવીનતમ વર્ઝન ડાઉનલોડ કરીને ઇન્સ્ટૉલ કરો, પછી ફરી પ્રયાસ કરો.</string>
+    <string name="folder_picker_companion_open">લિંક ખોલો</string>
     <string name="folder_picker_missing">આ ડિવાઇસમાં ફોલ્ડર પિકર નથી, તેથી ફોલ્ડર પસંદ કરી શકાતું નથી.</string>
     <string name="error_supervised_account">આ Google એકાઉન્ટ દેખરેખ હેઠળ છે, તેથી અહીં YouTube નો ઉપયોગ કરી શકાતો નથી. સાઇન આઉટ કરો અથવા બીજા એકાઉન્ટ પર સ્વિચ કરો.</string>
     <string name="settings_player_cache">પ્લેયર કૅશ</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">ટિપ્પણી કાઢી નાખો</string>
     <string name="video_details_delete_message">તમારી ટિપ્પણી અને તેના બધા જવાબો કાયમ માટે કાઢી નાખીએ?</string>
     <string name="video_details_deleted">ટિપ્પણી કાઢી નાખી</string>
+    <string name="cookie_protect_title">તમારું સાઇન ઇન પાસવર્ડથી સુરક્ષિત કરવું છે?</string>
+    <string name="cookie_protect_body">તમારું સાઇન ઇન આ કમ્પ્યુટર પર સેવ કરેલું છે, જ્યાં તમે ચલાવો છો તે અન્ય ઍપ તેને વાંચી શકે છે. તેને લૉક કરવા પાસવર્ડ સેટ કરો; YMusic દરેક વખતે શરૂ થાય ત્યારે તે પૂછશે.</string>
+    <string name="cookie_password">પાસવર્ડ</string>
+    <string name="cookie_protect_confirm">પાસવર્ડની પુષ્ટિ કરો</string>
+    <string name="cookie_protect_mismatch">પાસવર્ડ મેળ ખાતા નથી.</string>
+    <string name="cookie_protect_submit">સુરક્ષિત કરો</string>
+    <string name="cookie_protect_skip">હમણાં નહીં</string>
+    <string name="cookie_unlock_title">તમારું સાઇન ઇન અનલૉક કરો</string>
+    <string name="cookie_unlock_body">તમારું YouTube સાઇન ઇન પાસવર્ડથી સુરક્ષિત છે.</string>
+    <string name="cookie_unlock_submit">અનલૉક કરો</string>
+    <string name="cookie_unlock_wrong">ખોટો પાસવર્ડ.</string>
+    <string name="cookie_unlock_cant_unlock">અનલૉક નથી થતું?</string>
+    <string name="cookie_unlock_guest">મહેમાન તરીકે ચાલુ રાખો</string>
+    <string name="cookie_unlock_guest_hint">સાઇન ઇન વિના શરૂ થાય છે. કંઈ સાચવવામાં આવતું નથી.</string>
+    <string name="cookie_unlock_sign_out">સાઇન આઉટ</string>
+    <string name="cookie_unlock_sign_out_hint">આ સેવ કરેલું સાઇન ઇન દૂર કરે છે.</string>
+    <string name="cookie_unlock_sign_out_title">સાઇન આઉટ કરવું છે?</string>
+    <string name="cookie_unlock_sign_out_body">આનાથી આ કમ્પ્યુટર પરથી સેવ કરેલું સાઇન ઇન દૂર થશે. ફરી સાઇન ઇન કરવા, YMusic ઍપ વડે QR કોડ સ્કૅન કરો.</string>
     <string name="menu_details_comments">વિગતો અને ટિપ્પણીઓ</string>
     <string name="menu_search_lyrics">ગીતના શબ્દો શોધો</string>
     <string name="menu_speed_pitch">ઝડપ અને પિચ</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">બીજા ફોર્મેટમાં ડાઉનલોડ કરો</string>
     <string name="unsubscribe">અનસબ્સ્ક્રાઇબ કરો</string>
     <string name="unsubscribed">અનસબ્સ્ક્રાઇબ કર્યું</string>
+    <string name="tray_pause">થોભાવો</string>
+    <string name="tray_resume">ફરી શરૂ કરો</string>
+    <string name="tray_stop">રોકો (કતાર સાફ કરો)</string>
+    <string name="tray_quit">બંધ કરો</string>
+    <string name="shortcuts_title">કીબોર્ડ શૉર્ટકટ</string>
+    <string name="shortcuts_play_pause">વગાડો / થોભાવો</string>
+    <string name="shortcuts_now_playing">Now Playing બતાવો અથવા છુપાવો</string>
+    <string name="shortcuts_nav_menu">મેનુ ખોલો અથવા બંધ કરો</string>
+    <string name="shortcuts_switch_tabs">ટૅબ બદલો</string>
+    <string name="shortcuts_escape">પૂર્ણ સ્ક્રીનમાંથી બહાર નીકળો, અથવા Now Playing, મેનુ કે પૉપ-અપ બંધ કરો</string>
+    <string name="shortcuts_help">આ મદદ બતાવો</string>
+    <string name="shortcuts_volume_up">અવાજ વધારો</string>
+    <string name="shortcuts_volume_down">અવાજ ઘટાડો</string>
+    <string name="a11y_key_arrow_left">ડાબો તીર</string>
+    <string name="a11y_key_arrow_right">જમણો તીર</string>
+    <string name="a11y_key_arrow_up">ઉપર તીર</string>
+    <string name="a11y_key_arrow_down">નીચે તીર</string>
+    <string name="cd_always_on_top">હંમેશાં ટોચ પર</string>
+    <string name="settings_caption_size">કદ</string>
+    <string name="caption_size_preview">કૅપ્શન આ રીતે દેખાશે</string>
+    <string name="settings_caption_style">કૅપ્શનની શૈલી</string>
+    <string name="settings_caption_style_hint">વિડિયો કૅપ્શનનું કદ, રંગ અને પૃષ્ઠભૂમિ</string>
+    <string name="caption_text_color">ટેક્સ્ટનો રંગ</string>
+    <string name="caption_background">પૃષ્ઠભૂમિ</string>
+    <string name="caption_background_opacity">પૃષ્ઠભૂમિની અપારદર્શિતા</string>
+    <string name="download_quality_save">બચત</string>
+    <string name="download_quality_medium">મધ્યમ</string>
+    <string name="download_quality_best">શ્રેષ્ઠ</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows એ YMusic નો એક ભાગ બ્લૉક કર્યો છે.</string>
+    <string name="media_engine_unavailable">અહીં સંગીત અને વીડિયો ચાલી શકતા નથી, પણ તમે હજી પણ બ્રાઉઝ અને શોધ કરી શકો છો.</string>
+    <string name="native_blocked_help">ઑફિસ કે શાળાના PC પર, તમારા ઍડમિનિસ્ટ્રેટરને YMusic ને મંજૂરી આપવા કહો. તમારા પોતાના PC પર, Windows Security માં Smart App Control તપાસો.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">રિફ્રેશ થઈ રહ્યું છે</string>
+    <string name="a11y_loading">લોડ થઈ રહ્યું છે</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">બધા પસંદ કરો</string>
+    <string name="downloads_action_select">પસંદ કરો</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d પસંદ કર્યા</item>
+        <item quantity="other">%1$d પસંદ કર્યા</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">સૂચિમાંથી %1$d ડાઉનલોડ દૂર કરીએ?</item>
+        <item quantity="other">સૂચિમાંથી %1$d ડાઉનલોડ દૂર કરીએ?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">પૂર્ણ થયેલી ફાઇલો આ ઉપકરણ પર જ રહેશે.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">%1$d ફાઇલ કાઢી નાખીએ?</item>
+        <item quantity="other">%1$d ફાઇલ કાઢી નાખીએ?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">કાઢી નાખેલી ફાઇલો પાછી મેળવી શકાતી નથી.</string>
+    <string name="downloads_cancel_selected">ડાઉનલોડ રદ કરો</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">%1$d ડાઉનલોડ રદ કરીએ?</item>
+        <item quantity="other">%1$d ડાઉનલોડ રદ કરીએ?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">અત્યાર સુધી ડાઉનલોડ થયેલું કાઢી નાખવામાં આવશે.</string>
+    <string name="downloads_cancel_selected_keep">રાખો</string>
+    <string name="data_dir_unusable">YMusic તેનું ડેટા ફોલ્ડર, %1$s, ખોલી શકતું નથી. ખાતરી કરો કે તે એવું ફોલ્ડર છે જેમાં તમે લખી શકો, પછી YMusic ફરી ખોલો. (%2$s)</string>
 </resources>

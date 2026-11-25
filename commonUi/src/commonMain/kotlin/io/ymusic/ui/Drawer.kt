@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,22 +24,29 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.ymusic.ui.resources.Res
 import io.ymusic.ui.resources.app_name
 import io.ymusic.ui.resources.badge_premium
 import io.ymusic.ui.resources.update_check
-import io.ymusic.ui.resources.ymusic_logo
+import io.ymusic.ui.resources.ymusic_logo_square
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -45,6 +54,23 @@ import org.jetbrains.compose.resources.stringResource
 private val BrandGreenInk: Color @Composable get() = if (DesignColors.isDark) Color(0xFF4ADE80) else Color(0xFF15803D)
 private val BrandGreenBg: Color @Composable get() = if (DesignColors.isDark) Color(0xFF11301C) else Color(0xFFEAFAF0)
 private val BrandGreenBorder: Color @Composable get() = if (DesignColors.isDark) Color(0xFF1D4A2C) else Color(0xFFCDEED9)
+
+/** The logo, clipped to its disc here: clipped layer by layer, the rim's antialiasing compounds into a hard step. */
+@Composable
+internal fun AppLogo(size: Dp, modifier: Modifier = Modifier) {
+    Image(
+        painterResource(Res.drawable.ymusic_logo_square),
+        contentDescription = null,
+        modifier = modifier.size(size).clip(CircleShape),
+    )
+}
+
+/** The sections the app's navigation lists, on both the drawer and the rail. */
+internal fun listedSections(showCatalogue: Boolean, guest: Boolean, showDonate: Boolean): List<AppSection> =
+    AppSection.entries
+        .filter { it != AppSection.Catalogue || showCatalogue }
+        .filter { it != AppSection.PlayAgain || !guest }
+        .filter { it != AppSection.Donate || showDonate }
 
 /** The navigation drawer (design/final/drawer.html): brand header + three nav sections. */
 @Composable
@@ -63,22 +89,30 @@ fun AppDrawer(
     /** Lists Donate (only where a donation screen exists). */
     showDonate: Boolean = false,
     websiteUrl: String = AppLinks(null).website,
+    /** Whether the drawer is open: each opening lands keyboard focus on the current section's item. */
+    open: Boolean = false,
+    /** The window inset the drawer's parent pads at its start: the sheet reaches under it, or a closed drawer leaves only the parent, not the window. */
+    startInset: Dp = 0.dp,
 ) {
     ModalDrawerSheet(
-        modifier = Modifier.width(300.dp),
+        modifier = Modifier.offset(x = -startInset).width(DrawerSheetWidth + startInset),
         drawerContainerColor = DesignColors.Surface,
         drawerShape = RoundedCornerShape(0.dp),
+        windowInsets = WindowInsets(0),
     ) {
-        Column(Modifier.fillMaxHeight()) {
-            val updateStatus = updates?.status?.collectAsState()?.value
+        Column(Modifier.fillMaxHeight().padding(start = startInset)) {
+            val updateStatus = updates?.status?.collectAsStateWithLifecycle()?.value
             val updateWaiting = updateStatus is AppUpdateStatus.Offered
             DrawerHeader(appVersion, premium, onCheckUpdate, updateWaiting, websiteUrl)
             HorizontalDivider(color = DesignColors.Divider)
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
-                AppSection.entries
-                    .filter { it != AppSection.Catalogue || showCatalogue }
-                    .filter { it != AppSection.PlayAgain || !guest }
-                    .filter { it != AppSection.Donate || showDonate }
+            val listed = listedSections(showCatalogue, guest, showDonate)
+            // Keyed on open: Material3's drawer keeps its content composed while closed.
+            val activeItemFocus = remember { FocusRequester() }
+            LaunchedEffect(open) {
+                if (open && section in listed) activeItemFocus.requestFocus()
+            }
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).listKeyboardNavigation().padding(vertical = 8.dp)) {
+                listed
                     .groupBy { it.group }
                     .entries
                     .forEachIndexed { index, (_, sections) ->
@@ -86,7 +120,8 @@ fun AppDrawer(
                             HorizontalDivider(color = DesignColors.Divider, modifier = Modifier.padding(vertical = 4.dp))
                         }
                         sections.forEach { s ->
-                            DrawerItem(s, active = s == section) { onSelect(s) }
+                            val active = s == section
+                            DrawerItem(s, active = active, focusRequester = if (active) activeItemFocus else null) { onSelect(s) }
                         }
                     }
             }
@@ -98,11 +133,7 @@ fun AppDrawer(
 private fun DrawerHeader(appVersion: String?, premium: Boolean, onCheckUpdate: (() -> Unit)?, updateWaiting: Boolean, websiteUrl: String) {
     Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 13.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painterResource(Res.drawable.ymusic_logo),
-                contentDescription = stringResource(Res.string.app_name),
-                modifier = Modifier.size(46.dp).clip(RoundedCornerShape(13.dp)),
-            )
+            AppLogo(46.dp)
             Column {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -110,19 +141,7 @@ private fun DrawerHeader(appVersion: String?, premium: Boolean, onCheckUpdate: (
                         style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, color = DesignColors.InkStrong),
                     )
                     if (premium) {
-                        Text(
-                            stringResource(Res.string.badge_premium),
-                            style = TextStyle(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                letterSpacing = 0.54.sp,
-                                color = BrandGreenInk,
-                            ),
-                            modifier = Modifier
-                                .background(BrandGreenBg, RoundedCornerShape(5.dp))
-                                .border(1.dp, BrandGreenBorder, RoundedCornerShape(5.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
+                        PremiumBadge()
                     }
                 }
                 appVersion?.let {
@@ -134,19 +153,41 @@ private fun DrawerHeader(appVersion: String?, premium: Boolean, onCheckUpdate: (
                 }
             }
         }
-        // Text links under the logo, as in YMusicLegacy's drawer header; accent and a trailing dot while an update is waiting.
-        val uriHandler = LocalUriHandler.current
-        Column(Modifier.padding(top = DesignSpacing.Space8)) {
-            if (onCheckUpdate != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    HeaderLink(stringResource(Res.string.update_check), highlighted = updateWaiting, onClick = onCheckUpdate)
-                    if (updateWaiting) {
-                        Box(Modifier.size(DesignSpacing.Space8).background(DesignColors.Accent, CircleShape))
-                    }
+        DrawerLinks(onCheckUpdate, updateWaiting, websiteUrl)
+    }
+}
+
+@Composable
+internal fun PremiumBadge() {
+    Text(
+        stringResource(Res.string.badge_premium),
+        style = TextStyle(
+            fontSize = 9.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.54.sp,
+            color = BrandGreenInk,
+        ),
+        modifier = Modifier
+            .background(BrandGreenBg, RoundedCornerShape(5.dp))
+            .border(1.dp, BrandGreenBorder, RoundedCornerShape(5.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+/** Text links under the logo, as in YMusicLegacy's drawer header; accent and a trailing dot while an update is waiting. */
+@Composable
+internal fun DrawerLinks(onCheckUpdate: (() -> Unit)?, updateWaiting: Boolean, websiteUrl: String) {
+    val uriHandler = LocalUriHandler.current
+    Column(Modifier.padding(top = DesignSpacing.Space8)) {
+        if (onCheckUpdate != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HeaderLink(stringResource(Res.string.update_check), highlighted = updateWaiting, onClick = onCheckUpdate)
+                if (updateWaiting) {
+                    Box(Modifier.size(DesignSpacing.Space8).background(DesignColors.Accent, CircleShape))
                 }
             }
-            HeaderLink("ymusic.io") { uriHandler.openUri(websiteUrl) }
         }
+        HeaderLink("ymusic.io") { uriHandler.openUri(websiteUrl) }
     }
 }
 
@@ -167,31 +208,48 @@ private fun HeaderLink(text: String, highlighted: Boolean = false, onClick: () -
 }
 
 @Composable
-private fun DrawerItem(section: AppSection, active: Boolean, onClick: () -> Unit) =
-    DrawerRow(section.icon, stringResource(section.label), active, onClick)
+internal fun DrawerItem(
+    section: AppSection,
+    active: Boolean,
+    focusRequester: FocusRequester? = null,
+    iconStart: Dp = DrawerIconStart,
+    onClick: () -> Unit,
+) = DrawerRow(section.icon, stringResource(section.label), active, focusRequester, iconStart, onClick)
 
 @Composable
-private fun DrawerRow(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+private fun DrawerRow(
+    icon: ImageVector,
+    label: String,
+    active: Boolean,
+    focusRequester: FocusRequester?,
+    iconStart: Dp,
+    onClick: () -> Unit,
+) {
     val scheme = androidx.compose.material3.MaterialTheme.colorScheme
-    Box(Modifier.fillMaxWidth().clickable(onClick = onClick).background(if (active) scheme.primaryContainer else Color.Transparent)) {
+    val focusMod = if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
+    Box(
+        Modifier.fillMaxWidth().then(focusMod)
+            .clickable(onClick = onClick)
+            .semantics { selected = active }
+            .background(if (active) scheme.primaryContainer else Color.Transparent),
+    ) {
         if (active) {
             Box(
                 Modifier
                     .align(Alignment.CenterStart)
-                    .padding(vertical = 8.dp)
                     .size(width = 3.dp, height = 33.dp)
                     .background(DesignColors.Accent, RoundedCornerShape(topEnd = 3.dp, bottomEnd = 3.dp)),
             )
         }
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 11.dp),
+            Modifier.fillMaxWidth().padding(start = iconStart, end = DrawerIconStart, top = 11.dp, bottom = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 icon,
                 null,
-                Modifier.size(23.dp),
+                Modifier.size(DrawerIconSize),
                 tint = if (active) scheme.onPrimaryContainer else DesignColors.Ink,
             )
             val labelStyle = when {
@@ -202,3 +260,7 @@ private fun DrawerRow(icon: ImageVector, label: String, active: Boolean, onClick
         }
     }
 }
+
+private val DrawerSheetWidth = 300.dp
+internal val DrawerIconSize = DesignSpacing.Space24
+private val DrawerIconStart = 20.dp

@@ -1,6 +1,8 @@
 #include "mse_host.h"
+#include "mse_caps.h"
 #include "mse_ffmpeg.h"
 #include "audio_fx.h"
+#include "vpresent.h"
 
 #include <limits.h>
 #include <pthread.h>
@@ -17,8 +19,13 @@
 #elif defined(__linux__) && !defined(__ANDROID__)
 #include "aq_pulse.h"
 #define MSE_AQ 1
+#elif defined(_WIN32)
+#include <windows.h>
+#include "aq_winmm.h"
+#define MSE_AQ 1
 #endif
 #ifdef __APPLE__
+#include <TargetConditionals.h>
 #include <mach/mach_time.h>
 #include <os/log.h>
 #include <sys/sysctl.h>
@@ -35,12 +42,25 @@
 /* Handover holds cover queue latency, not a wall clock that ran away while audio was missing. */
 #define DAC_HANDOVER_MAX_S 0.5
 #define DAC_START_WAIT_NS 2e9
+/* Audio the ring holds before the device starts. */
+#define DAC_START_MS 160
 #endif
 #ifdef __ANDROID__
 #define DAC_FIRST_REPORT_NS 1e9
 /* Longest the clock runs ahead of the sink's last position report. */
 #define DAC_EXTRAPOLATE_S 0.05
 #endif
+
+/* Audio plays this far past the end of buffered video, then waits for it: a short video gap keeps
+   the sound going, a long one stalls playback so the picture catches up (Chrome waits at once). */
+#define VIDEO_LEAD_S 0.25
+/* Once waiting, audio resumes when video is buffered this far past the clock, not frame by frame.
+   A wait that begins soon after the last one ended doubles it (a link slower than the stream would
+   otherwise play a second, stall, play a second); a wait right after a seek starts on less. */
+#define VIDEO_START_S 0.5
+#define VIDEO_RESUME_S 2.0
+#define VIDEO_RESUME_MAX_S 8.0
+#define VIDEO_RESTARVE_NS 20e9
 
 static void (*g_js_event)(const char *name);
 
@@ -51,10 +71,18 @@ void mse_host_set_js_event(void (*fn)(const char *name))
 
 struct MseHost {
     pthread_mutex_t mu;
-    pthread_mutex_t frame_mu;
-    /* Guards the av pointer for callers off the JS thread: reset frees and replaces it. */
+    /* Guards the av pointer for callers off the JS thread (reset frees and replaces it), and vp.
+       Reset holds it across MediaCodec teardown, which can take seconds: UI readouts only try-lock it. */
     pthread_mutex_t av_mu;
+    /* State changes (play, pause, seek, rest, appended media) wake both loops. Timed waits use cv_clock. */
     pthread_cond_t cv;
+    /* busy / vbusy dropping to 0, for wait_idle: the loops' own passes never wake each other. */
+    pthread_cond_t idle_cv;
+#ifndef __APPLE__
+    clockid_t cv_clock;
+#endif
+    /* Bumped by every append and end of stream: a decode pass that saw it change does not wait. */
+    unsigned fed;
     pthread_t dec;
     pthread_t vdec;
     int started;
@@ -69,29 +97,43 @@ struct MseHost {
     double origin_ns;
     double seek_base;
     double yt_dur;
+    /* dec_loop only: the clock at the last trim_played. */
+    double trimmed_at;
     MseAv *av;
-    MseFrameFn on_frame;
+    VPresenter *vp;
+#ifdef __APPLE__
+    /* iOS: the presenter wrapping `window`. av_mu. */
+    VPresenter *layer_vp;
+#endif
     MsePcmFn on_pcm;
     MseProgressFn on_prog;
     void *user;
     void *window;
     int vw;
     int vh;
-    /* JVM hole. Survives mse_host_reset (new MseAv). 0×0 = decode size. */
-    int blit_w;
-    int blit_h;
     /* Atomic, not under mu: the UI thread polls it and must never wait on the decode lock. */
     atomic_int frames;
-    uint8_t *last_bgra; /* borrowed from MseAv ping-pong; do not free */
-    int last_w;
-    int last_h;
-    int frame_gen;
+    /* The last mse_host_dropped_frames answer, repeated while av_mu is busy. */
+    atomic_int dropped_seen;
     double vpts;
     int rate;
     int ch;
     float speed;
     int64_t samples_played;
     int64_t samples_pulled;
+    /* When audio started waiting for video data (now_ns), 0 while it is not. */
+    double v_starve_ns;
+    double v_starve_end_ns;
+    double v_resume_s;
+    /* Where playback last started from (a seek target). */
+    double v_start_t;
+    /* Video woke from rest and has not reached the clock yet: audio plays on while it catches up. */
+    int v_wake;
+    /* Rest reasons: JS audio-only (__mseRestVideo) and the shell's picture-hidden. The decoder sleeps
+       while either holds. rest_mu is outermost: never taken under mu, av_mu or the MseAv lock. */
+    pthread_mutex_t rest_mu;
+    int rest_js;
+    int rest_hidden;
     AudioFx *fx;
     int16_t *fx_pcm;
     size_t fx_pcm_n;
@@ -127,6 +169,8 @@ struct MseHost {
     int dac_cp_n;
     /* Set by every ring flush: the first PCM written after it puts seek_base at its own pts. */
     int pcm_anchor;
+    /* Media time the last chunk written to the ring ends at; -1 after a flush. mu. */
+    double pulled_end;
     /* The audio stream ended (endOfStream, all of it played) while the media runs on: the clock
        continues on wall time instead of freezing at the last sample. */
     int audio_out;
@@ -202,6 +246,33 @@ static double now_ns(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec * 1e9 + (double)ts.tv_nsec;
 #endif
+}
+
+/* mu held. Relative on Apple and monotonic where the cv allows it: a wall clock set back must not
+   stretch the wait. */
+static void host_wait_ms(MseHost *h, int ms)
+{
+    struct timespec until;
+#ifdef __APPLE__
+    until.tv_sec = ms / 1000;
+    until.tv_nsec = (long)(ms % 1000) * 1000000L;
+    pthread_cond_timedwait_relative_np(&h->cv, &h->mu, &until);
+#else
+    clock_gettime(h->cv_clock, &until);
+    until.tv_nsec += (long)ms * 1000000L;
+    until.tv_sec += until.tv_nsec / 1000000000L;
+    until.tv_nsec %= 1000000000L;
+    pthread_cond_timedwait(&h->cv, &h->mu, &until);
+#endif
+}
+
+/* New media for the decode loop, which may be waiting for it. */
+static void host_fed(MseHost *h)
+{
+    pthread_mutex_lock(&h->mu);
+    h->fed++;
+    pthread_cond_broadcast(&h->cv);
+    pthread_mutex_unlock(&h->mu);
 }
 
 static double media_dur(MseHost *h)
@@ -349,6 +420,26 @@ static void rebase_hold(MseHost *h, double t)
 #endif
 }
 
+/* h->mu held. Linear play stays inside leftover, `keep` behind its end (the live head of what we have) so
+   SABR can fetch and parse the next second before we empty. */
+static double linear_cap(MseHost *h, double first, double last, int has_video)
+{
+    double span = last - first, keep;
+    /* VOD catching the real end — not live leftover past a stale
+       MediaSource duration (log23 recreate: yt_dur=17253, vf to 17266). */
+    /* Audio-only leftover often ends ~0.5–1s before yt_dur (fake-144
+       cover is 0..dur; audio last is short). 0.5s was too tight. */
+    int near_eos = h->yt_dur > 0 && last + 1.5 >= h->yt_dur && last <= h->yt_dur + 0.75;
+    /* Audio-only (no C video) must play to audio last or the clock freezes
+       1s early and SABR audio never appends (log2: clock=570.884). */
+    if (near_eos || !has_video)
+        return last;
+    /* Live leftover is often ~2s. Keep 1s video readahead on long
+       VOD; 0.35s on a short live window so we do not starve-empty. */
+    keep = span >= 4.0 ? 1.0 : 0.35;
+    return span > keep ? last - keep : last;
+}
+
 static double clock_with_span(MseHost *h, int have, double first, double last, int has_video)
 {
     double t, hold;
@@ -374,12 +465,17 @@ static double clock_with_span(MseHost *h, int have, double first, double last, i
 #endif
     } else {
         int wait_audio = 0;
+        int dac_clock = 0;
 #ifdef MSE_DAC
         /* After a flush, a stream with audio holds the clock until the device starts (Chrome keeps
            currentTime until audio covers it) rather than running ahead on wall time: the audio
            would start behind it. A device that never starts falls back to wall time. */
         wait_audio = h->rate > 0 && !h->aq_started && !h->audio_out &&
                      now_ns() - h->flush_ns < DAC_START_WAIT_NS;
+        /* Audio held back for video has not started the device either: the clock waits with it,
+           however long the video takes. */
+        if (h->rate > 0 && !h->aq_started && !h->audio_out && h->v_starve_ns > 0)
+            wait_audio = 1;
 #endif
         if (wait_audio && h->playing)
             h->origin_ns = now_ns();
@@ -402,6 +498,7 @@ static double clock_with_span(MseHost *h, int have, double first, double last, i
                 h->origin_ns = now_ns();
             dac += sink_tick_extra_s(h) * sp;
             t = dac_handover(h, dac);
+            dac_clock = 1;
         } else {
             h->clk_dac = 0;
         }
@@ -412,39 +509,23 @@ static double clock_with_span(MseHost *h, int have, double first, double last, i
                          dac_media_s(h, (double)(h->samples_played - aq_latency_frames(h)), sp);
             dac += aq_tick_extra_s(h) * sp;
             t = dac_handover(h, dac);
+            dac_clock = 1;
         } else {
             h->clk_dac = 0;
         }
 #endif
 #endif
-        /* Linear play: stay inside leftover. Sit 1s behind leftover end
-           (live head of what we have) so SABR can fetch+parse the next
-           second before we empty. Rebase origin on clamp or wall time
-           accrues through the wait and the next chunk is recv-late. */
+        /* A wall clock rebases on clamp, or wall time accrues through the wait and the next chunk is
+           recv-late. A device clock must not: the device plays on what it holds, and a rebase drops that
+           audio from the clock for good. The decode loop stops audio at the cap instead. */
         if (have) {
-            double cap = last;
-            /* VOD catching the real end — not live leftover past a stale
-               MediaSource duration (log23 recreate: yt_dur=17253, vf to 17266). */
-            /* Audio-only leftover often ends ~0.5–1s before yt_dur (fake-144
-               cover is 0..dur; audio last is short). 0.5s was too tight. */
-            int near_eos = h->yt_dur > 0 && last + 1.5 >= h->yt_dur &&
-                           last <= h->yt_dur + 0.75;
-            /* 1s behind leftover end is for video readahead. Audio-only
-               (no C video) must play to audio last or the clock freezes
-               1s early and SABR audio never appends (log2: clock=570.884). */
-            /* Live leftover is often ~2s. Keep 1s video readahead on long
-               VOD; 0.35s on a short live window so we do not starve-empty. */
-            if (!near_eos && has_video) {
-                double span = last - first;
-                double keep = span >= 4.0 ? 1.0 : 0.35;
-                if (span > keep)
-                    cap = last - keep;
-            }
+            double cap = linear_cap(h, first, last, has_video);
             if (t < first)
                 t = first;
             else if (t > cap) {
                 t = cap;
-                rebase_hold(h, cap);
+                if (!dac_clock)
+                    rebase_hold(h, cap);
             }
         }
     }
@@ -460,11 +541,20 @@ static double clock_with_span(MseHost *h, int have, double first, double last, i
     return t;
 }
 
+static double hold_of(MseHost *h)
+{
+    double hold;
+    pthread_mutex_lock(&h->mu);
+    hold = h->hold;
+    pthread_mutex_unlock(&h->mu);
+    return hold < 0 ? 0 : hold;
+}
+
 static double host_clock(MseHost *h)
 {
     double first = 0, last = 0, t;
     int have, has_v;
-    have = mse_av_span(h->av, &first, &last);
+    have = mse_av_span(h->av, hold_of(h), &first, &last);
     has_v = mse_av_has_video(h->av);
     pthread_mutex_lock(&h->mu);
     t = clock_with_span(h, have, first, last, has_v);
@@ -481,6 +571,22 @@ static void hold_at_playhead(MseHost *h)
     if (h->playing && h->hold < t)
         rebase_hold(h, t);
     pthread_mutex_unlock(&h->mu);
+}
+
+/* Played media this far behind the playhead leaves the buffer, as Shaka's bufferBehind: the quota
+   GC alone keeps everything up to 150 MiB of video. A backward seek past it refetches. */
+#define MSE_KEEP_BEHIND_S 30.0
+#define MSE_TRIM_EVERY_S 5.0
+
+static void trim_played(MseHost *h, double clock)
+{
+    double before = clock - MSE_KEEP_BEHIND_S;
+    if (before <= 0 || (clock >= h->trimmed_at && clock - h->trimmed_at < MSE_TRIM_EVERY_S))
+        return;
+    h->trimmed_at = clock;
+    hold_at_playhead(h);
+    mse_av_evict_before(h->av, 1, before, SIZE_MAX);
+    mse_av_evict_before(h->av, 0, before, SIZE_MAX);
 }
 
 #ifdef MSE_DAC
@@ -510,7 +616,6 @@ static void ring_write(MseHost *h, const uint8_t *p, int n)
         h->ring_n += chunk;
         p += chunk;
         n -= chunk;
-        pthread_cond_broadcast(&h->cv);
     }
 }
 
@@ -547,6 +652,7 @@ static int ring_read(MseHost *h, uint8_t *p, int n, int color)
 /* h->mu held. Drops queued PCM; the DAC must drop what it holds of the old generation too. */
 static void ring_flush(MseHost *h)
 {
+    h->pulled_end = -1;
     h->ring_r = h->ring_w = h->ring_n = 0;
     h->ring_gen++;
     h->flush_ns = now_ns();
@@ -594,7 +700,6 @@ static void aq_callback(void *user, AudioQueueRef q, AudioQueueBufferRef buf)
         dac_cp_fold(h, h->dac_pos - aq_latency_frames(h));
         h->dac_tick_ns = now_ns();
     }
-    pthread_cond_broadcast(&h->cv);
     pthread_mutex_unlock(&h->mu);
     if (n <= 0) {
         memset(buf->mAudioData, 0, (size_t)cap);
@@ -772,20 +877,6 @@ static int ring_ms(MseHost *h)
 }
 #endif
 
-/* Decode thread pulls frames; JS thread only appends/seeks. on_frame/on_pcm
-   run on the decode thread. Do not touch MseHost from a third thread. */
-static void keep_bgra(MseHost *h, int w, int ht, uint8_t *bgra)
-{
-    if (!bgra || w <= 0 || ht <= 0)
-        return;
-    pthread_mutex_lock(&h->frame_mu);
-    h->last_bgra = bgra;
-    h->last_w = w;
-    h->last_h = ht;
-    h->frame_gen++;
-    pthread_mutex_unlock(&h->frame_mu);
-}
-
 static void maybe_notify_ended(MseHost *h)
 {
     int playing;
@@ -817,13 +908,11 @@ static void *vid_loop(void *arg)
     MseHost *h = (MseHost *)arg;
     while (1) {
         double clock, dur;
-        uint8_t *bgra = NULL;
-        uint8_t *show = NULL;
-        int w = 0, ht = 0, show_w = 0, show_ht = 0;
+        int w = 0, ht = 0;
         double pts = 0;
         pthread_mutex_lock(&h->mu);
         h->vbusy = 0;
-        pthread_cond_broadcast(&h->cv);
+        pthread_cond_broadcast(&h->idle_cv);
         for (;;) {
             while (!h->released && (!h->playing || h->gate))
                 pthread_cond_wait(&h->cv, &h->mu);
@@ -858,13 +947,7 @@ static void *vid_loop(void *arg)
         clock = host_clock(h);
         dur = mse_av_duration(h->av);
 
-        if (mse_av_pull_video(h->av, clock, &bgra, &w, &ht, &pts) > 0) {
-            if (bgra) {
-                keep_bgra(h, w, ht, bgra);
-                show = bgra;
-                show_w = w;
-                show_ht = ht;
-            }
+        if (mse_av_pull_video(h->av, clock, &w, &ht, &pts) > 0) {
             pthread_mutex_lock(&h->mu);
             h->vw = w;
             h->vh = ht;
@@ -873,8 +956,6 @@ static void *vid_loop(void *arg)
             atomic_fetch_add_explicit(&h->frames, 1, memory_order_relaxed);
         }
 
-        if (show && h->on_frame)
-            h->on_frame(h->user, show_w, show_ht, show);
         if (h->on_prog)
             h->on_prog(h->user, clock, dur, w, ht);
         maybe_notify_ended(h);
@@ -888,6 +969,49 @@ static void *vid_loop(void *arg)
 }
 
 static int audio_done(MseHost *h);
+
+#ifdef MSE_DAC
+enum { STARVE_NONE, STARVE_BEGIN, STARVE_END };
+
+/* h->mu held. How far audio may be pulled while video is buffered to `end` (have = video present). */
+static double video_bound(MseHost *h, double clock, double until, int have, double end, int *event)
+{
+    int done = !have || h->eos || (h->yt_dur > 0 && end + 1.5 >= h->yt_dur);
+    *event = STARVE_NONE;
+    if (h->v_wake) {
+        if (!have || end < clock)
+            return until;
+        h->v_wake = 0;
+    }
+    if (h->v_starve_ns > 0) {
+        if (!done && end < clock + h->v_resume_s)
+            return clock;
+        *event = STARVE_END;
+        return until;
+    }
+    if (done || end + VIDEO_LEAD_S >= until)
+        return until;
+    if (end + VIDEO_LEAD_S <= clock) {
+        double now = now_ns();
+        if (clock < h->v_start_t + 1.0)
+            h->v_resume_s = VIDEO_START_S;
+        else if (h->v_starve_end_ns > 0 && now - h->v_starve_end_ns < VIDEO_RESTARVE_NS) {
+            double next = h->v_resume_s * 2;
+            h->v_resume_s = next < VIDEO_RESUME_S ? VIDEO_RESUME_S : next > VIDEO_RESUME_MAX_S ? VIDEO_RESUME_MAX_S : next;
+        } else
+            h->v_resume_s = VIDEO_RESUME_S;
+        h->v_starve_ns = now;
+        *event = STARVE_BEGIN;
+        return clock;
+    }
+#ifdef MSE_DAC
+    /* Video ending just past the clock must still let the device start. */
+    if (!h->aq_started && end + VIDEO_LEAD_S < clock + DAC_START_MS / 1000.0)
+        return clock + DAC_START_MS / 1000.0 < until ? clock + DAC_START_MS / 1000.0 : until;
+#endif
+    return end + VIDEO_LEAD_S;
+}
+#endif
 
 #ifdef MSE_DAC
 /* Media3 hands the clock to wall time when the audio renderer has read its stream to the end but
@@ -950,9 +1074,40 @@ static void aq_watchdog(MseHost *h)
 #ifdef MSE_DAC
 #define FILL_GAP_LOG_MS 150.0
 #define FILL_GAP_LOW_RING_MS 100
+/* A pass pulls up to `until` (the clock plus the lead, which counts the device's buffer too, so the
+   ring alone says little). Between passes the loop sleeps until FILL_BATCH_S more can be pulled, at
+   most FILL_WAIT_MAX_MS (the watchdog, the ended check and the clock's trims run once a pass). Short
+   of `until` it polls: briefly while pulls still land, slower while it waits for media (an append
+   wakes it at once). */
+#define FILL_RING_FULL_MS 400
+#define FILL_BATCH_S 0.1
+#define FILL_WAIT_MAX_MS 100
+#define FILL_POLL_MS 5
+#define FILL_STARVED_MS 20
+#define FILL_PULLS_MAX 8
 
-/* At a pass end. Passes run every ~2 ms, so a long gap that left the ring nearly empty is this
-   thread starved or stuck while the device ran out of audio. */
+/* h->mu held. `filled` is the pass's pull count, `until` how far it could pull. */
+static int fill_wait_ms(MseHost *h, int filled, double until)
+{
+    int ring = ring_ms(h);
+    double wait_s;
+    int ms;
+    if (h->ended_sent)
+        return FILL_WAIT_MAX_MS;
+    if (filled >= FILL_PULLS_MAX)
+        return 1;
+    if (ring >= FILL_RING_FULL_MS)
+        wait_s = ring / 1000.0 - (FILL_RING_FULL_MS / 1000.0 - FILL_BATCH_S);
+    else if (h->pulled_end >= 0 && h->pulled_end >= until - FILL_BATCH_S)
+        wait_s = (h->pulled_end + FILL_BATCH_S - until) / play_speed(h);
+    else
+        return filled > 0 ? FILL_POLL_MS : FILL_STARVED_MS;
+    ms = (int)(wait_s * 1000.0);
+    return ms < FILL_POLL_MS ? FILL_POLL_MS : ms > FILL_WAIT_MAX_MS ? FILL_WAIT_MAX_MS : ms;
+}
+
+/* At a pass end. Passes run at most FILL_WAIT_MAX_MS apart, so a long gap that left the ring nearly
+   empty is this thread starved or stuck while the device ran out of audio. */
 static void log_fill_gap(MseHost *h, int ring_at_wake)
 {
     double now = now_ns(), gap = h->fill_end_ns > 0 ? (now - h->fill_end_ns) / 1e6 : 0;
@@ -974,16 +1129,21 @@ static void *dec_loop(void *arg)
         int16_t *pcm = NULL;
         int frames = 0, rate = 0, ch = 0;
         double pts = 0;
+        unsigned fed;
+        int wait_ms = 2;
 #ifdef MSE_DAC
         int filled;
         int ring_at_wake;
+        double pass_until;
+        double span_first = 0, span_last = 0;
+        int span_have, span_video;
 #ifdef MSE_AQ
         AudioQueueRef start_q = NULL;
 #endif
 #endif
         pthread_mutex_lock(&h->mu);
         h->busy = 0;
-        pthread_cond_broadcast(&h->cv);
+        pthread_cond_broadcast(&h->idle_cv);
         while (!h->released && (!h->playing || h->gate)) {
 #ifdef MSE_DAC
             h->fill_end_ns = 0;
@@ -995,24 +1155,33 @@ static void *dec_loop(void *arg)
             return NULL;
         }
         h->busy = 1;
+        fed = h->fed;
 #ifdef MSE_DAC
         ring_at_wake = ring_ms(h);
 #endif
         pthread_mutex_unlock(&h->mu);
         clock = host_clock(h);
+        trim_played(h, clock);
 
 #ifdef MSE_DAC
+        span_have = mse_av_span(h->av, hold_of(h), &span_first, &span_last) && span_last > span_first;
+        span_video = mse_av_has_video(h->av);
         /* Own thread: a late 4K GOP must not starve AudioQueue. */
         filled = 0;
-        while (filled < 8) {
+        pass_until = clock;
+        while (filled < FILL_PULLS_MAX) {
             int want;
             int dac = 0;
+            int in_frames;
             unsigned gen;
             double lead = 0.35;
             double until;
             double from = clock;
+            double vend = 0, starved_ms = 0, resume_s;
+            int vhave = mse_av_video_end(h->av, &vend);
+            int starve, device_runs;
             pthread_mutex_lock(&h->mu);
-            want = ring_ms(h) < 400;
+            want = ring_ms(h) < FILL_RING_FULL_MS;
             gen = h->ring_gen;
             /* The lead is output time: the device queue sits on top of it, and at 2x it covers
                twice the media. */
@@ -1036,12 +1205,40 @@ static void *dec_loop(void *arg)
             if (h->aq_started && !h->dac_live && from > h->seek_base)
                 from = h->seek_base;
 #endif
+            until = video_bound(h, clock, until, vhave, vend, &starve);
+            /* The clock holds at the cap while the device runs (clock_with_span): audio past it would
+               play ahead of the picture. */
+#ifdef __ANDROID__
+            device_runs = h->dac_live;
+#else
+            device_runs = h->aq_started;
+#endif
+            if (span_have && device_runs) {
+                double cap = linear_cap(h, span_first, span_last, span_video);
+                if (until > cap)
+                    until = cap;
+            }
+            if (starve == STARVE_END) {
+                h->v_starve_end_ns = now_ns();
+                starved_ms = (h->v_starve_end_ns - h->v_starve_ns) / 1e6;
+                h->v_starve_ns = 0;
+            }
+            resume_s = h->v_resume_s;
             pthread_mutex_unlock(&h->mu);
-            if (!want)
+            if (starve == STARVE_BEGIN)
+                mse_critf(MSE_LOG_INFO, "mse-v starve: audio waits for video buffered to %.3f clock=%.3f resume=+%.1fs",
+                          vend, clock, resume_s);
+            else if (starve == STARVE_END)
+                mse_critf(MSE_LOG_INFO, "mse-v starve over after %.0f ms: video buffered to %.3f clock=%.3f",
+                          starved_ms, vend, clock);
+            pass_until = until;
+            /* Not even up to `until`: a pull takes packets up to 80 ms past it, and that creeps the clock. */
+            if (!want || until <= clock)
                 break;
             pcm = NULL;
             if (mse_av_pull_audio(h->av, from, until, &pcm, &frames, &rate, &ch, &pts) <= 0 || !pcm)
                 break;
+            in_frames = frames;
             host_stretch(h, &pcm, &frames, ch, rate);
             if (frames <= 0) {
                 pcm = NULL;
@@ -1089,8 +1286,10 @@ static void *dec_loop(void *arg)
                         h->pcm_anchor = 0;
                     }
                     ring_write(h, (const uint8_t *)pcm, nbytes);
+                    if (rate > 0)
+                        h->pulled_end = pts + (double)in_frames / rate;
                 }
-                if (dac && !h->aq_started && ring_ms(h) >= 160) {
+                if (dac && !h->aq_started && ring_ms(h) >= DAC_START_MS) {
                     h->aq_started = 1;
                     dac_rebase(h, 0);
                     h->dac_tick_ns = 0;
@@ -1145,14 +1344,17 @@ static void *dec_loop(void *arg)
 #ifdef MSE_DAC
         log_fill_gap(h, ring_at_wake);
 #endif
-        {
-            struct timespec sl;
-            /* Never 0: pull_audio returning 0 with packets still pending
-               was while(true){}. 2ms is plenty for DAC fill. */
-            sl.tv_sec = 0;
-            sl.tv_nsec = 2 * 1000 * 1000;
-            nanosleep(&sl, NULL);
-        }
+        /* Never 0: pull_audio returning 0 with packets still pending was while(true){}. idle_cv
+           first, so a seek waiting for this loop does not sit out the wait. */
+        pthread_mutex_lock(&h->mu);
+#ifdef MSE_DAC
+        wait_ms = fill_wait_ms(h, filled, pass_until);
+#endif
+        h->busy = 0;
+        pthread_cond_broadcast(&h->idle_cv);
+        if (!h->released && h->playing && !h->gate && h->fed == fed)
+            host_wait_ms(h, wait_ms);
+        pthread_mutex_unlock(&h->mu);
     }
 }
 
@@ -1166,15 +1368,35 @@ MseHost *mse_host_create(void)
     MseHost *h = (MseHost *)calloc(1, sizeof(MseHost));
     if (!h)
         return NULL;
+    mse_caps_start();
     pthread_mutex_init(&h->mu, NULL);
-    pthread_mutex_init(&h->frame_mu, NULL);
     pthread_mutex_init(&h->av_mu, NULL);
+    pthread_mutex_init(&h->rest_mu, NULL);
+#ifdef __APPLE__
     pthread_cond_init(&h->cv, NULL);
+#else
+    {
+        pthread_condattr_t attr;
+        pthread_condattr_init(&attr);
+        h->cv_clock = CLOCK_REALTIME;
+#ifndef _WIN32
+        /* winpthreads takes the deadline as wall time whatever the attribute says. */
+        if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC) == 0)
+            h->cv_clock = CLOCK_MONOTONIC;
+#endif
+        pthread_cond_init(&h->cv, &attr);
+        pthread_condattr_destroy(&attr);
+    }
+#endif
+    pthread_cond_init(&h->idle_cv, NULL);
     h->av = mse_av_create();
     h->fx = audio_fx_create();
     h->speed = 1.f;
     h->playing = 0;
     h->vpts = -1;
+#ifdef MSE_DAC
+    h->pulled_end = -1;
+#endif
     if (!h->av) {
         free(h);
         return NULL;
@@ -1251,11 +1473,15 @@ static void aq_pause_flush(MseHost *h)
 static void wait_idle(MseHost *h)
 {
     while ((h->busy || h->vbusy) && !h->released)
-        pthread_cond_wait(&h->cv, &h->mu);
+        pthread_cond_wait(&h->idle_cv, &h->mu);
 }
 
 void mse_host_destroy(MseHost *h)
 {
+    VPresenter *vp;
+#ifdef __APPLE__
+    VPresenter *layer_vp;
+#endif
     if (!h)
         return;
     pthread_mutex_lock(&h->mu);
@@ -1265,6 +1491,7 @@ void mse_host_destroy(MseHost *h)
     h->flushing = 1;
 #endif
     pthread_cond_broadcast(&h->cv);
+    pthread_cond_broadcast(&h->idle_cv);
     pthread_mutex_unlock(&h->mu);
     if (h->started) {
         pthread_join(h->dec, NULL);
@@ -1297,34 +1524,68 @@ void mse_host_destroy(MseHost *h)
         ANativeWindow_release((ANativeWindow *)h->window);
     h->window = NULL;
 #endif
-#ifdef __APPLE__
-    mse_av_set_window(h->av, NULL);
-    if (h->window) {
-        mse_vt_detach(h->window);
-        h->window = NULL;
-    }
-#endif
-    pthread_mutex_lock(&h->frame_mu);
-    h->last_bgra = NULL;
-    h->last_w = 0;
-    h->last_h = 0;
-    pthread_mutex_unlock(&h->frame_mu);
     pthread_mutex_lock(&h->av_mu);
+    vp = h->vp;
+    h->vp = NULL;
+#ifdef __APPLE__
+    layer_vp = h->layer_vp;
+    h->layer_vp = NULL;
+    h->window = NULL;
+#endif
     mse_av_destroy(h->av);
     h->av = NULL;
     pthread_mutex_unlock(&h->av_mu);
+    vpresent_unbind(vp, h);
+    vpresent_release(vp);
+#ifdef __APPLE__
+    vpresent_detach(layer_vp);
+    vpresent_release(layer_vp);
+#endif
     audio_fx_destroy(h->fx);
     free(h->fx_pcm);
-    pthread_mutex_destroy(&h->frame_mu);
     pthread_mutex_destroy(&h->av_mu);
+    pthread_mutex_destroy(&h->rest_mu);
     pthread_mutex_destroy(&h->mu);
     pthread_cond_destroy(&h->cv);
+    pthread_cond_destroy(&h->idle_cv);
     free(h);
+}
+
+void mse_host_bind_presenter(MseHost *h, VPresenter *p)
+{
+    VPresenter *old;
+    if (!h)
+        return;
+    /* Before the decoder sees it, so its first frame is not dropped. */
+    vpresent_bind(p, h);
+    vpresent_retain(p);
+    pthread_mutex_lock(&h->av_mu);
+    old = h->vp;
+    h->vp = p;
+    mse_av_set_presenter(h->av, p, h);
+    pthread_mutex_unlock(&h->av_mu);
+    if (old != p)
+        vpresent_unbind(old, h);
+    vpresent_release(old);
+}
+
+/* A reference to the bound presenter, or NULL. */
+static VPresenter *host_presenter(MseHost *h)
+{
+    VPresenter *vp;
+    pthread_mutex_lock(&h->av_mu);
+    vp = h->vp;
+    vpresent_retain(vp);
+    pthread_mutex_unlock(&h->av_mu);
+    return vp;
 }
 
 void mse_host_set_video_surface(MseHost *h, void *window)
 {
     void *old;
+#ifdef __APPLE__
+    VPresenter *p = NULL, *old_vp;
+#endif
     if (!h)
         return;
     pthread_mutex_lock(&h->mu);
@@ -1338,41 +1599,34 @@ void mse_host_set_video_surface(MseHost *h, void *window)
     if (old)
         ANativeWindow_release((ANativeWindow *)old);
 #elif defined(__APPLE__)
+    if (window == old)
+        return;
+    if (window) {
+        p = vpresent_create_vt_layer(window, NULL);
+        if (!p)
+            mse_critf(MSE_LOG_WARN, "mse-v no presenter for layer %p", window);
+    }
     pthread_mutex_lock(&h->av_mu);
-    mse_av_set_window(h->av, window);
+    old_vp = h->layer_vp;
+    h->layer_vp = p;
     pthread_mutex_unlock(&h->av_mu);
-    if (old && old != window)
-        mse_vt_detach(old);
+    mse_host_bind_presenter(h, p);
+    vpresent_detach(old_vp);
+    vpresent_release(old_vp);
 #else
     (void)window;
     (void)old;
 #endif
 }
 
-void mse_host_set_sinks(MseHost *h, MseFrameFn on_frame, MsePcmFn on_pcm, MseProgressFn on_prog, void *user)
+void mse_host_set_sinks(MseHost *h, MsePcmFn on_pcm, MseProgressFn on_prog, void *user)
 {
     if (!h)
         return;
     pthread_mutex_lock(&h->mu);
-    h->on_frame = on_frame;
     h->on_pcm = on_pcm;
     h->on_prog = on_prog;
     h->user = user;
-    pthread_mutex_unlock(&h->mu);
-}
-
-void mse_host_set_blit_size(MseHost *h, int w, int ht)
-{
-    if (!h)
-        return;
-    if (w < 0)
-        w = 0;
-    if (ht < 0)
-        ht = 0;
-    pthread_mutex_lock(&h->mu);
-    h->blit_w = w;
-    h->blit_h = ht;
-    mse_av_set_blit_size(h->av, w, ht);
     pthread_mutex_unlock(&h->mu);
 }
 
@@ -1398,7 +1652,7 @@ void mse_host_play(MseHost *h)
     dur = mse_av_duration(h->av);
     {
         double first = 0, last = 0;
-        int have = mse_av_span(h->av, &first, &last);
+        int have = mse_av_span(h->av, hold_of(h), &first, &last);
         int has_v = mse_av_has_video(h->av);
         pthread_mutex_lock(&h->mu);
         clock = clock_with_span(h, have, first, last, has_v);
@@ -1524,11 +1778,17 @@ static void seek_common(MseHost *h, double seconds)
     h->gate = 1;
     pthread_cond_broadcast(&h->cv);
     wait_idle(h);
+    if (h->fx)
+        audio_fx_reset(h->fx);
     h->hold = seconds;
     h->seek_base = seconds;
     h->origin_ns = now_ns();
     h->eos = 0;
     h->ended_sent = 0;
+    h->v_starve_ns = 0;
+    h->v_starve_end_ns = 0;
+    h->v_start_t = seconds;
+    h->v_wake = 0;
 #ifdef MSE_DAC
     h->samples_played = 0;
     h->aq_started = 0;
@@ -1546,6 +1806,7 @@ static void seek_common(MseHost *h, double seconds)
 
 void mse_host_reset(MseHost *h)
 {
+    MseAv *old_av;
     if (!h)
         return;
 #ifdef MSE_DAC
@@ -1558,6 +1819,8 @@ void mse_host_reset(MseHost *h)
     h->gate = 1;
     pthread_cond_broadcast(&h->cv);
     wait_idle(h);
+    if (h->fx)
+        audio_fx_reset(h->fx);
     h->gate = 0;
     h->hold = 0;
     h->seek_base = 0;
@@ -1574,22 +1837,26 @@ void mse_host_reset(MseHost *h)
     ring_flush(h);
 #endif
     h->vpts = -1;
-    pthread_mutex_lock(&h->frame_mu);
-    h->last_bgra = NULL;
-    h->last_w = 0;
-    h->last_h = 0;
-    pthread_mutex_unlock(&h->frame_mu);
     pthread_mutex_lock(&h->av_mu);
-    mse_av_destroy(h->av);
+    old_av = h->av;
     h->av = mse_av_create();
-    /* MediaSource reset drops MseAv (and mc_win / VT layer / blit size).
-       Keep the attached window so AV1/MediaCodec can open after load.
-       Keep the hole so 4K does not sws 3840×2160 (log28 hole=0x0, ~1 fps). */
+    /* The new MseAv keeps the window (Android: MediaCodec opens after load) and the presenter. */
+#ifdef __ANDROID__
     mse_av_set_window(h->av, h->window);
-    mse_av_set_blit_size(h->av, h->blit_w, h->blit_h);
+#endif
+    mse_av_set_presenter(h->av, h->vp, h);
     pthread_mutex_unlock(&h->av_mu);
     pthread_cond_broadcast(&h->cv);
     pthread_mutex_unlock(&h->mu);
+    /* The new MseAv starts awake; JS re-rests it for audio-only after the load, the shell's reason stays. */
+    pthread_mutex_lock(&h->rest_mu);
+    h->rest_js = 0;
+    if (h->rest_hidden)
+        mse_av_retire_decoder(mse_av_rest_video(h->av, 1, 0)); /* a fresh MseAv has no decoder yet */
+    pthread_mutex_unlock(&h->rest_mu);
+    /* Outside the locks: MediaCodec can take seconds to stop, and the UI thread's surface calls wait on them.
+       Still on this thread, so the next load can't race the old codec for the surface. */
+    mse_av_destroy(old_av);
 }
 
 int mse_host_paused(MseHost *h)
@@ -1603,11 +1870,19 @@ int mse_host_paused(MseHost *h)
     return p;
 }
 
+/* 2 (HAVE_CURRENT_DATA) while audio waits for video: the element's buffered ranges can already
+   cover the playhead then, and only the host knows playback is held. */
 int mse_host_ready_state(MseHost *h)
 {
     double d;
+    int starving;
     if (!h)
         return 0;
+    pthread_mutex_lock(&h->mu);
+    starving = h->v_starve_ns > 0;
+    pthread_mutex_unlock(&h->mu);
+    if (starving)
+        return 2;
     d = mse_av_duration(h->av);
     if (d > 0)
         return 4;
@@ -1715,6 +1990,7 @@ void mse_host_end_of_stream(MseHost *h)
     pthread_mutex_lock(&h->mu);
     h->eos = 1;
     pthread_mutex_unlock(&h->mu);
+    host_fed(h);
     maybe_notify_ended(h);
 }
 
@@ -1731,29 +2007,17 @@ int mse_host_video_size(MseHost *h, int *w, int *ht)
 
 int mse_host_copy_frame(MseHost *h, uint8_t *dst, int cap, int *w, int *ht, int *gen)
 {
+    VPresenter *vp;
     int n;
     if (!h)
         return 0;
-    pthread_mutex_lock(&h->frame_mu);
-    if (!h->last_bgra || h->last_w <= 0 || h->last_h <= 0) {
-        pthread_mutex_unlock(&h->frame_mu);
-        return 0;
-    }
-    if ((uint64_t)h->last_w * (uint64_t)h->last_h > (uint64_t)(INT_MAX / 4)) {
-        pthread_mutex_unlock(&h->frame_mu);
-        return 0;
-    }
-    n = h->last_w * h->last_h * 4;
-    if (w)
-        *w = h->last_w;
-    if (ht)
-        *ht = h->last_h;
+    vp = host_presenter(h);
+    /* Little-endian XRGB ints are BGRA bytes. */
+    n = vpresent_snapshot(vp, (uint32_t *)dst, dst && cap > 0 ? cap / 4 : 0, w, ht);
+    vpresent_release(vp);
     if (gen)
-        *gen = h->frame_gen;
-    if (dst && cap >= n)
-        memcpy(dst, h->last_bgra, (size_t)n);
-    pthread_mutex_unlock(&h->frame_mu);
-    return n;
+        *gen = atomic_load(&h->frames);
+    return n > 0 && n <= INT_MAX / 4 ? n * 4 : 0;
 }
 
 int mse_host_video_failure(MseHost *h, char *out, int cap)
@@ -1761,7 +2025,8 @@ int mse_host_video_failure(MseHost *h, char *out, int cap)
     int failed;
     if (!h)
         return 0;
-    pthread_mutex_lock(&h->av_mu);
+    if (pthread_mutex_trylock(&h->av_mu) != 0)
+        return 0;
     failed = mse_av_video_failure(h->av, out, cap);
     pthread_mutex_unlock(&h->av_mu);
     return failed;
@@ -1772,6 +2037,43 @@ int mse_host_frames(MseHost *h)
     if (!h)
         return 0;
     return atomic_load_explicit(&h->frames, memory_order_relaxed);
+}
+
+void mse_host_video_quality(MseHost *h, int *total, int *dropped)
+{
+    int shown = 0, late = 0;
+    if (h) {
+        pthread_mutex_lock(&h->av_mu);
+        mse_av_video_quality(h->av, &shown, &late);
+        pthread_mutex_unlock(&h->av_mu);
+    }
+    *total = shown + late;
+    *dropped = late;
+}
+
+int mse_host_dropped_frames(MseHost *h)
+{
+    int shown, dropped;
+    if (!h)
+        return 0;
+    /* Callers sum the deltas, and a count going down reads as a new load: busy repeats, never 0. */
+    if (pthread_mutex_trylock(&h->av_mu) != 0)
+        return atomic_load_explicit(&h->dropped_seen, memory_order_relaxed);
+    mse_av_video_quality(h->av, &shown, &dropped);
+    pthread_mutex_unlock(&h->av_mu);
+    atomic_store_explicit(&h->dropped_seen, dropped, memory_order_relaxed);
+    return dropped;
+}
+
+void mse_host_video_decoder(MseHost *h, char *out, int cap)
+{
+    out[0] = 0;
+    if (!h)
+        return;
+    if (pthread_mutex_trylock(&h->av_mu) != 0)
+        return;
+    mse_av_video_decoder(h->av, out, cap);
+    pthread_mutex_unlock(&h->av_mu);
 }
 
 #ifdef __ANDROID__
@@ -1801,15 +2103,9 @@ int mse_host_dac_poll(MseHost *h, uint8_t *dst, int cap, int wait_ms, int state[
     if (!h)
         return -1;
     pthread_mutex_lock(&h->mu);
-    /* Only paused waits here: while playing, the decode loop signals cv every few ms. */
-    if (wait_ms > 0 && !h->released && !h->playing && h->dac_attached) {
-        struct timespec until;
-        clock_gettime(CLOCK_REALTIME, &until);
-        until.tv_nsec += (long)wait_ms * 1000000L;
-        until.tv_sec += until.tv_nsec / 1000000000L;
-        until.tv_nsec %= 1000000000L;
-        pthread_cond_timedwait(&h->cv, &h->mu, &until);
-    }
+    /* Only paused waits here, for play. */
+    if (wait_ms > 0 && !h->released && !h->playing && h->dac_attached)
+        host_wait_ms(h, wait_ms);
     if (h->released) {
         pthread_mutex_unlock(&h->mu);
         return -1;
@@ -1886,6 +2182,12 @@ static size_t phys_mib(void)
     if (sysctlbyname("hw.memsize", &mem, &len, NULL, 0) != 0 || mem == 0)
         return 8192;
     return (size_t)(mem / MSE_MIB);
+#elif defined(_WIN32)
+    MEMORYSTATUSEX ms;
+    ms.dwLength = sizeof(ms);
+    if (!GlobalMemoryStatusEx(&ms) || ms.ullTotalPhys == 0)
+        return 4096;
+    return (size_t)(ms.ullTotalPhys / MSE_MIB);
 #else
     long pages = sysconf(_SC_PHYS_PAGES);
     long psz = sysconf(_SC_PAGE_SIZE);
@@ -1964,11 +2266,19 @@ int mse_host_append(MseHost *h, int audio, const uint8_t *p, int n, double ts_of
     if (n <= 0)
         return 1;
     r = mse_av_append(h->av, audio, p, n, ts_off, win_start, win_end);
+    host_fed(h);
     mse_logf(
             "mse append a=%d bytes=%d n=%d init=%d first=%.3f last=%.3f tsOff=%.3f win=%.3g..%.3g clock=%.3f",
             audio, n, r.n, r.is_init, r.first, r.last, ts_off, win_start, win_end,
             mse_host_current_time(h));
     return r.n >= 0 ? 1 : 0;
+}
+
+static void show_black(MseHost *h)
+{
+    VPresenter *vp = host_presenter(h);
+    vpresent_flush(vp, h);
+    vpresent_release(vp);
 }
 
 void mse_host_remove(MseHost *h, int audio, double start, double end)
@@ -1980,27 +2290,7 @@ void mse_host_remove(MseHost *h, int audio, double start, double end)
     mse_av_remove(h->av, audio, start, end);
     /* Audio-only (or a full video wipe) — stop showing the last decoded frame. */
     if (!audio && mse_av_buffered(h->av, 0, pairs, 1) <= 0) {
-        uint8_t *black = NULL;
-        int w = 0, ht = 0;
-        pthread_mutex_lock(&h->frame_mu);
-        if (h->last_bgra && h->last_w > 0 && h->last_h > 0 &&
-            (uint64_t)h->last_w * (uint64_t)h->last_h <= (uint64_t)(INT_MAX / 4)) {
-            memset(h->last_bgra, 0, (size_t)h->last_w * (size_t)h->last_h * 4);
-            black = h->last_bgra;
-            w = h->last_w;
-            ht = h->last_h;
-            h->frame_gen++;
-        }
-        pthread_mutex_unlock(&h->frame_mu);
-        if (black) {
-            if (h->on_frame)
-                h->on_frame(h->user, w, ht, black);
-        }
-        pthread_mutex_lock(&h->frame_mu);
-        h->last_bgra = NULL;
-        h->last_w = 0;
-        h->last_h = 0;
-        pthread_mutex_unlock(&h->frame_mu);
+        show_black(h);
         pthread_mutex_lock(&h->mu);
         h->vw = 0;
         h->vh = 0;
@@ -2020,46 +2310,49 @@ void mse_host_change_type(MseHost *h, int audio)
         mse_av_change_type(h->av, audio);
 }
 
-static void show_black(MseHost *h)
+/* rest_mu held. Returns the decoder to retire once rest_mu is released (see mse_av_rest_video). */
+static void *apply_rest(MseHost *h)
 {
-    uint8_t *black = NULL;
-    int w = 0, ht = 0;
-    if (!h)
-        return;
-    pthread_mutex_lock(&h->frame_mu);
-    if (!h->last_bgra || h->last_w <= 0 || h->last_h <= 0) {
-        pthread_mutex_unlock(&h->frame_mu);
-        return;
-    }
-    memset(h->last_bgra, 0, (size_t)h->last_w * (size_t)h->last_h * 4);
-    w = h->last_w;
-    ht = h->last_h;
-    black = h->last_bgra;
-    if (black)
-        h->frame_gen++;
-    pthread_mutex_unlock(&h->frame_mu);
-    if (!black)
-        return;
-    if (h->on_frame)
-        h->on_frame(h->user, w, ht, black);
+    int on = h->rest_js || h->rest_hidden;
+    double clock = host_clock(h);
+    void *retired = mse_av_rest_video(h->av, on, clock);
     pthread_mutex_lock(&h->mu);
-    h->vw = w;
-    h->vh = ht;
-    pthread_mutex_unlock(&h->mu);
-}
-
-void mse_host_rest_video(MseHost *h, int on)
-{
-    double clock = 0;
-    if (!h)
-        return;
-    clock = host_clock(h);
-    mse_av_rest_video(h->av, on, clock);
-    pthread_mutex_lock(&h->mu);
+    h->v_wake = !on;
     pthread_cond_broadcast(&h->cv);
     pthread_mutex_unlock(&h->mu);
     if (on)
         show_black(h);
+    return retired;
+}
+
+/* Each rest reason has one caller thread (JS: the engine thread; hidden: the shell's serial rest thread), and
+   only the thread that put the decoder to rest can lift its own reason, so a retired decoder is always
+   stopped before the window can take a new one. */
+void mse_host_rest_video(MseHost *h, int on)
+{
+    void *retired;
+    if (!h)
+        return;
+    pthread_mutex_lock(&h->rest_mu);
+    h->rest_js = on ? 1 : 0;
+    retired = apply_rest(h);
+    pthread_mutex_unlock(&h->rest_mu);
+    mse_av_retire_decoder(retired);
+}
+
+void mse_host_set_video_hidden(MseHost *h, int hidden)
+{
+    void *retired = NULL;
+    if (!h)
+        return;
+    pthread_mutex_lock(&h->rest_mu);
+    hidden = hidden ? 1 : 0;
+    if (h->rest_hidden != hidden) {
+        h->rest_hidden = hidden;
+        retired = apply_rest(h);
+    }
+    pthread_mutex_unlock(&h->rest_mu);
+    mse_av_retire_decoder(retired);
 }
 
 int mse_host_buffered(MseHost *h, int audio, double *pairs, int max_pairs)

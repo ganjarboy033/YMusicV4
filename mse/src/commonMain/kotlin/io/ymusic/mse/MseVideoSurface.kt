@@ -7,6 +7,12 @@ expect class MseVideoSurface {
     /** Native presents since attach (`mse_host_frames`). */
     fun presentedFrames(): Int
 
+    /** Pictures dropped for missing their time since the last load (`mse_host_video_quality`). */
+    fun droppedFrames(): Int
+
+    /** "hw vp9", "sw av1"; "" while no video decoder is open. Never waits on the decoder. */
+    fun videoDecoder(): String
+
     fun setVolume(volume: Float)
 
     fun setAudioEffect(
@@ -19,9 +25,15 @@ expect class MseVideoSurface {
     /** Fixed-position log-frequency bars in 0..1. Returns count written. */
     fun pcmLevels(out: FloatArray): Int
 
+    /** The picture is off screen: the host rests its video decoder, still buffering the chosen quality. */
+    fun setVideoHidden(hidden: Boolean)
+
     /** Android: the audio output's session id, for system audio effects. 0 = none (or not Android). */
     fun audioSessionId(): Int
 
-    /** Android: why MediaCodec gave up on the video stream; null while video decodes (or not Android). */
+    /**
+     * Android: why MediaCodec gave up on the video stream; null while video decodes (or not Android).
+     * Null can also mean the host was busy, so one null clears nothing: poll again. Never blocks.
+     */
     fun videoFailure(): String?
 }

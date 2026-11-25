@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import okio.Buffer
 import okio.use
+import kotlin.concurrent.Volatile
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.cancellation.CancellationException
@@ -529,9 +530,12 @@ class QuickJsRuntime private constructor(
                     // Deliberate fire-and-forget: cleanup must not mask the abort cause.
                     if (!weEnded && !peerReadClosed) {
                         weEnded = true
-                        runCatching {
-                            engine.closeWrite(id, "send aborted mid-stream: ${t.message ?: "cancelled"}")
-                        }.exceptionOrNull()?.let(t::addSuppressed)
+                        // Cancelled by close(), this can resume off the engine thread: JS is out of reach.
+                        if (!closed.load()) {
+                            runCatching {
+                                engine.closeWrite(id, "send aborted mid-stream: ${t.message ?: "cancelled"}")
+                            }.exceptionOrNull()?.let(t::addSuppressed)
+                        }
                         maybeReap()
                     }
                     throw t
@@ -638,7 +642,8 @@ class QuickJsRuntime private constructor(
             if (readClosed) return
             readClosed = true
             inbound.clear()
-            engine.closeRead(id) // tell the peer writer: EPIPE
+            // An aborted receive reaches here off the engine thread when close() cancelled it.
+            if (!closed.load()) engine.closeRead(id) // tell the peer writer: EPIPE
             val r = reader // an in-flight receive is now a misuse — fail it, don't quietly EOF
             if (r != null) {
                 reader = null
@@ -768,6 +773,19 @@ class QuickJsRuntime private constructor(
             configure: (QuickJsRuntime) -> Unit = {},
         ): QuickJsRuntime = bootOn(dispatcher, appVersion, onLog, configure) { it.evalEngineBytecode(bytecode) }
 
+        /**
+         * Host entries every runtime created from now on gets in its frozen `versions` global next
+         * to `app` (device facts: os, model, screen…). Values are String, Boolean or numbers; set
+         * once at startup, before the first engine.
+         */
+        @Volatile
+        var hostVersions: Map<String, Any> = emptyMap()
+
+        /** True while no window shows the app (the shells set it): every runtime's intervals and
+         *  longer timeouts then fire on one shared 1 s grid, as Chrome aligns a hidden page's timers. */
+        @Volatile
+        var timersInBackground: Boolean = false
+
         /** A fresh single-thread engine dispatcher for the synchronous [create]; the caller owns
          *  it — close it once every runtime confined to it is closed.
          *
@@ -822,7 +840,7 @@ class QuickJsRuntime private constructor(
                 override fun onDrain(id: Int) { rtRef?.onDrain(id) }
                 override fun onLog(level: Int, message: String) { rtRef?.onLog(level, message) }
             }
-            val engine = NativeEngine.create(appVersion, callbacks)
+            val engine = NativeEngine.create(appVersion, versionsJson(hostVersions), callbacks)
             val rt = try {
                 QuickJsRuntime(engine, dispatcher, onLog)
             } catch (t: Throwable) {
@@ -844,4 +862,35 @@ class QuickJsRuntime private constructor(
             return rt
         }
     }
+}
+
+/** [entries] as a flat JSON object for C's `versions` install; null when empty. */
+internal fun versionsJson(entries: Map<String, Any>): String? {
+    if (entries.isEmpty()) return null
+    val out = StringBuilder("{")
+    for ((key, value) in entries) {
+        val literal = when (value) {
+            is String -> jsonString(value)
+            is Boolean, is Int, is Long -> value.toString()
+            is Double, is Float -> value.toString().takeIf { value.toDouble().isFinite() }
+                ?: throw IllegalArgumentException("versions entry $key: $value is not a finite number")
+            else -> throw IllegalArgumentException("versions entry $key: ${value::class} is not String/Boolean/number")
+        }
+        if (out.length > 1) out.append(',')
+        out.append(jsonString(key)).append(':').append(literal)
+    }
+    return out.append('}').toString()
+}
+
+private fun jsonString(text: String): String {
+    val out = StringBuilder(text.length + 2).append('"')
+    for (ch in text) {
+        when {
+            ch == '"' -> out.append("\\\"")
+            ch == '\\' -> out.append("\\\\")
+            ch < ' ' -> out.append("\\u").append(ch.code.toString(16).padStart(4, '0'))
+            else -> out.append(ch)
+        }
+    }
+    return out.append('"').toString()
 }

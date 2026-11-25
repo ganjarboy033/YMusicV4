@@ -9,11 +9,21 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import io.ymusic.mse.FileAvNative
+import java.awt.Dimension
+import java.awt.GraphicsConfiguration
+import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
 import java.awt.Window
 
+internal const val MIN_WINDOW_WIDTH = 275
+internal const val MIN_WINDOW_HEIGHT = 170
+
+/** Compose's undecorated resize handles have no floor of their own, and AWT cannot paint a zero-size translucent window. */
+internal fun minimumWindowSize(): Dimension = Dimension(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
+
 /**
- * Floating, zoom (fit the work area), and native macOS fullscreen.
+ * Floating, zoom (fit the work area), and fullscreen: native on macOS, the window manager's on Linux,
+ * on Windows the undecorated window sized to its monitor's full bounds.
  *
  * Never uses [WindowPlacement.Maximized]: AWT's maximized flag fights
  * [NSWindow.toggleFullScreen] and forgets the floating size.
@@ -39,8 +49,9 @@ internal class DesktopFrame(
     fun noteFloatingIfIdle() {
         if (fullscreen || zoomed) return
         if (state.placement != WindowPlacement.Floating) return
-        floatingSize = state.size
-        floatingPosition = state.position
+        val (size, position) = linuxFloatingFrame(state.size, state.position)
+        floatingSize = size
+        floatingPosition = position
     }
 
     fun toggleZoom() {
@@ -59,7 +70,36 @@ internal class DesktopFrame(
     }
 
     fun toggleFullscreen() {
-        host?.let { FileAvNative.toggleFullScreen(it) }
+        val w = host ?: return
+        if (isMac) {
+            if (mediaLibraryLoaded()) FileAvNative.toggleFullScreen(w)
+            return
+        }
+        if (isLinux) return toggleWmFullscreen(w)
+        if (fullscreen) return onNativeFullscreen(false)
+        if (!zoomed) {
+            floatingSize = state.size
+            floatingPosition = state.position
+        }
+        fullscreen = true
+        val b = w.graphicsConfiguration.bounds
+        put(DpSize(b.width.dp, b.height.dp), WindowPosition(b.x.dp, b.y.dp))
+    }
+
+    /**
+     * The window manager's own fullscreen (_NET_WM_STATE_FULLSCREEN), entered and left through AWT. A
+     * monitor-sized undecorated window is promoted to that state by Mutter anyway, and then ignores the
+     * resize that would end it; leaving the state restores the window's previous frame.
+     */
+    private fun toggleWmFullscreen(w: Window) {
+        val device = w.graphicsConfiguration.device
+        if (fullscreen) {
+            if (device.fullScreenWindow === w) device.fullScreenWindow = null
+            fullscreen = false
+        } else {
+            fullscreen = true
+            device.fullScreenWindow = w
+        }
     }
 
     fun onNativeFullscreen(on: Boolean) {
@@ -85,11 +125,28 @@ internal class DesktopFrame(
     }
 }
 
-internal fun workArea(w: Window): Pair<DpSize, WindowPosition> {
-    val gc = w.graphicsConfiguration
+internal fun workArea(w: Window): Pair<DpSize, WindowPosition> = workArea(w.graphicsConfiguration)
+
+private fun workArea(gc: GraphicsConfiguration): Pair<DpSize, WindowPosition> {
     val b = gc.bounds
     val insets = Toolkit.getDefaultToolkit().getScreenInsets(gc)
-    val width = (b.width - insets.left - insets.right).coerceAtLeast(320)
-    val height = (b.height - insets.top - insets.bottom).coerceAtLeast(480)
+    val width = (b.width - insets.left - insets.right).coerceAtLeast(MIN_WINDOW_WIDTH)
+    val height = (b.height - insets.top - insets.bottom).coerceAtLeast(MIN_WINDOW_HEIGHT)
     return DpSize(width.dp, height.dp) to WindowPosition((b.x + insets.left).dp, (b.y + insets.top).dp)
+}
+
+private fun covers(size: DpSize, gc: GraphicsConfiguration): Boolean =
+    size.width.value >= gc.bounds.width && size.height.value >= gc.bounds.height
+
+/**
+ * A floating frame for Linux that is not its monitor's full size: GNOME takes an undecorated window that
+ * covers the monitor for a fullscreen one, and then ignores the resizes that would shrink it.
+ */
+internal fun linuxFloatingFrame(size: DpSize, position: WindowPosition): Pair<DpSize, WindowPosition> {
+    if (!isLinux) return size to position
+    val screens = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration }
+    val at = (position as? WindowPosition.Absolute)?.let { p ->
+        screens.firstOrNull { it.bounds.contains(p.x.value.toInt(), p.y.value.toInt()) }
+    } ?: screens.firstOrNull()
+    return if (at != null && covers(size, at)) workArea(at) else size to position
 }

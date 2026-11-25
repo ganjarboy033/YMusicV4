@@ -1,6 +1,7 @@
 package io.ymusic.android
 
 import android.app.PendingIntent
+import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,7 @@ import io.ymusic.ui.AppUpdates
 import io.ymusic.ui.UpdateCheck
 import io.ymusic.ui.UpdateDownload
 import kmpcommon.log.Logger
+import kmphttp.HttpStatusException
 import kmphttp.KmpHttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +45,9 @@ import okio.buffer
 import okio.sink
 import okio.source
 import org.jetbrains.compose.resources.StringResource
+import projectcommon.error.DISK_FULL_CODE
+import projectcommon.error.NETWORK_CODE
+import projectcommon.error.errorCode
 import java.io.File
 
 /**
@@ -189,7 +194,7 @@ class AndroidAppUpdates(
             val claimed = synchronized(lock) {
                 val download = tracked.value?.takeIf { it.release == release }?.download
                 val busy = download is UpdateDownload.Running || download is UpdateDownload.Ready ||
-                    download is UpdateDownload.Installing
+                    download is UpdateDownload.Installing || download is UpdateDownload.InstallFailed
                 if (offer.value?.release != release || busy) {
                     false
                 } else {
@@ -199,7 +204,9 @@ class AndroidAppUpdates(
             }
             if (!claimed) return@launch
             try {
-                withContext(Dispatchers.IO) { fetch(update) }
+                val apk = apkFile(update)
+                val downloaded = withContext(Dispatchers.IO) { apk.isFile && sha256Of(apk) == update.sha256 }
+                if (!downloaded) withContext(Dispatchers.IO) { fetch(update) }
                 set(release, UpdateDownload.Ready)
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -212,10 +219,19 @@ class AndroidAppUpdates(
                 } else if (error is DownloadMismatchException) {
                     log?.captureError(error, "update ${update.versionCode} failed verification")
                     set(release, UpdateDownload.Failed("E91011"))
+                } else if (error is HttpStatusException) {
+                    log?.log(Logger.Level.WARN, "downloading update ${update.versionCode} refused by the server", error)
+                    set(release, UpdateDownload.Failed("E91017"))
+                } else if (error.errorCode() == DISK_FULL_CODE) {
+                    log?.log(Logger.Level.WARN, "downloading update ${update.versionCode} failed: storage is full", error)
+                    set(release, UpdateDownload.Failed(DISK_FULL_CODE))
                 } else if (error is javax.net.ssl.SSLHandshakeException) {
                     // The device doesn't trust the host (stale root store, wrong clock, intercepting network).
                     log?.log(Logger.Level.WARN, "downloading update ${update.versionCode} failed: untrusted TLS", error)
                     set(release, UpdateDownload.Failed("E91014"))
+                } else if (error.errorCode() == NETWORK_CODE) {
+                    log?.log(Logger.Level.WARN, "downloading update ${update.versionCode} hit a network failure", error)
+                    set(release, UpdateDownload.Failed(NETWORK_CODE))
                 } else {
                     log?.captureError(error, "downloading update ${update.versionCode} failed")
                     set(release, UpdateDownload.Failed("E91012"))
@@ -238,7 +254,7 @@ class AndroidAppUpdates(
     /** Opens the system install prompt; Android restarts nothing — the user reopens the app. */
     override fun installAndRestart() {
         val (update, download) = current() ?: return
-        if (download !is UpdateDownload.Ready) return
+        if (download !is UpdateDownload.Ready && download !is UpdateDownload.InstallFailed) return
         if (!canInstall()) return needInstallPermission(update, install = true)
         set(update.release, UpdateDownload.Installing)
         scope.launch {
@@ -247,20 +263,35 @@ class AndroidAppUpdates(
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (error: Exception) {
-                if (isDeviceInstallBlock(error)) {
-                    log?.log(Logger.Level.WARN, "device refused installing update ${update.versionCode}", error)
-                } else {
-                    log?.captureError(error, "installing update ${update.versionCode} failed")
+                val code = when {
+                    isStorageFull(error) -> {
+                        log?.log(Logger.Level.WARN, "installing update ${update.versionCode} failed: storage is full", error)
+                        DISK_FULL_CODE
+                    }
+                    isDeviceInstallBlock(error) -> {
+                        log?.log(Logger.Level.WARN, "device refused installing update ${update.versionCode}", error)
+                        "E91015"
+                    }
+                    else -> {
+                        log?.captureError(error, "installing update ${update.versionCode} failed")
+                        "E91013"
+                    }
                 }
-                set(update.release, UpdateDownload.Failed("E91013"))
+                set(update.release, UpdateDownload.InstallFailed(code))
             }
         }
     }
 
-    /** The install session ended without replacing this process (cancelled, or failed): offer it again. */
-    fun onInstallEnded() {
+    /** The install session ended without replacing this process: offer it again, and say why unless the user cancelled. */
+    fun onInstallEnded(status: Int) {
         val (update, download) = current() ?: return
-        if (download is UpdateDownload.Installing) set(update.release, UpdateDownload.Ready)
+        if (download !is UpdateDownload.Installing) return
+        val next = when (status) {
+            PackageInstaller.STATUS_FAILURE_ABORTED -> UpdateDownload.Ready
+            PackageInstaller.STATUS_FAILURE_STORAGE -> UpdateDownload.InstallFailed(DISK_FULL_CODE)
+            else -> UpdateDownload.InstallFailed("E91016")
+        }
+        set(update.release, next)
     }
 
     private fun needInstallPermission(update: AppUpdate, install: Boolean) {
@@ -278,7 +309,17 @@ class AndroidAppUpdates(
         } else {
             Intent(Settings.ACTION_SECURITY_SETTINGS)
         }
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        val opened = context.startFirstActivity(
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        if (!opened) {
+            log?.log(Logger.Level.WARN, "no settings screen grants the install permission; offering the browser")
+            val (update, download) = current() ?: return
+            if (download is UpdateDownload.NeedsInstallPermission) {
+                set(update.release, UpdateDownload.NeedsInstallPermission(offerBrowser = true))
+            }
+        }
     }
 
     /** Back in the app: a request held for the install permission continues once it is granted. */
@@ -301,6 +342,10 @@ class AndroidAppUpdates(
         @Suppress("DEPRECATION")
         Settings.Secure.getInt(context.contentResolver, Settings.Secure.INSTALL_NON_MARKET_APPS, 0) == 1
     }
+
+    /** PackageInstaller's "Requested internal only, but not enough space" and the like. */
+    private fun isStorageFull(error: Exception): Boolean =
+        error is java.io.IOException && error.message?.contains("not enough space", ignoreCase = true) == true
 
     /** Device state the app can't change; the official-site link the dialog offers is the way out. */
     private fun isDeviceInstallBlock(error: Exception): Boolean = when (error) {
@@ -362,7 +407,14 @@ class UpdateInstallReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
-                context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                try {
+                    context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (error: ActivityNotFoundException) {
+                    val app = context.applicationContext as? YMusicApplication ?: return
+                    app.rootLogger.fork("update").log(Logger.Level.WARN, "no screen confirms the package install", error)
+                    app.services.takeIf { it.isCompleted && !it.isCancelled }?.getCompleted()?.updates
+                        ?.onInstallEnded(PackageInstaller.STATUS_FAILURE)
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> {
@@ -371,7 +423,8 @@ class UpdateInstallReceiver : BroadcastReceiver() {
                     Logger.Level.WARN,
                     "package install ended with status $status: ${intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)}",
                 )
-                app.services.takeIf { it.isCompleted && !it.isCancelled }?.getCompleted()?.updates?.onInstallEnded()
+                app.services.takeIf { it.isCompleted && !it.isCancelled }?.getCompleted()?.updates
+                    ?.onInstallEnded(status)
             }
         }
     }

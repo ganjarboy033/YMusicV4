@@ -1,6 +1,7 @@
 package io.ymusic.player
 
 import projectcommon.error.CodedError
+import projectcommon.error.PLAYBACK_UNAVAILABLE_CODE
 
 /**
  * Engine + media lifecycle, preserving the legacy player contract. [readyToLoad] means an ordinary
@@ -11,9 +12,10 @@ sealed class PlaybackState(val readyToLoad: Boolean) {
     /** The engine does not yet have a usable native/page session. */
     data class Uninitialized(val isInitializing: Boolean) : PlaybackState(readyToLoad = false)
 
-    /** A failed load/session. A broken session must be reset before another load. */
+    /** A failed load/session. A broken session must be reset before another load; otherwise the
+     *  error belongs to the failed item ([PlayerError.canRetry] is about retrying that item). */
     data class Error(val error: PlayerError) :
-        PlaybackState(readyToLoad = error.canRetry && !error.needReset)
+        PlaybackState(readyToLoad = !error.needReset)
 
     /** The initialized engine has no media loaded. */
     data object Idle : PlaybackState(readyToLoad = true)
@@ -74,9 +76,14 @@ data class PlaybackConfig(
     val preampDb: Float = 0f,
     /** False bypasses the equalizer/bass/virtualizer/preamp (system audio effects take over); the values are kept. */
     val inAppAudioFx: Boolean = true,
+    /** False: no loudness gain ([PlayableItem.loudnessScale], YouTube's), and no YouTube stable-volume track. */
+    val stableVolume: Boolean = true,
     val loop: Boolean = false,
     val preferCaptionLanguage: Pair<String, Long> = UNDETERMINED_LANGUAGE to 0L,
     val scaleMode: ScaleMode = ScaleMode.CONTAIN,
+    /** The picture is off screen: the engine may rest its video decoder, keeping the chosen quality. Engine-only,
+     *  from [Player.setVideoHidden]; always false in [Player.config]. */
+    val videoHidden: Boolean = false,
 ) {
     init {
         require(volume in 0f..1f) { "volume out of range: $volume" }
@@ -110,6 +117,9 @@ data class PlayerError(
 
         /** The app no longer holds the storage grant for a local item's folder (Android SAF) — re-adding the folder fixes it. */
         const val FOLDER_ACCESS_LOST = "folder_access_lost"
+
+        /** This host cannot play anything at all ([PlayerEngines.unavailable]); the shell has reported why. */
+        const val PLAYBACK_UNAVAILABLE = PLAYBACK_UNAVAILABLE_CODE
 
         /** The platform video decoder refused the stream (size or profile beyond the device). */
         const val VIDEO_DECODER_FAILED = "E60064"

@@ -56,9 +56,10 @@ android {
         applicationId = "io.ymusic.android"
         minSdk = Versions.minSdk
         targetSdk = Versions.targetSdk
-        versionCode = 16
+        versionCode = appVersionCode()
         versionName = appVersionName
         buildConfigField("String", "SENTRY_DSN", "\"${sentryDsn()}\"")
+        buildConfigField("String", "SENTRY_ENVIRONMENT", "\"${sentryEnvironment()}\"")
         buildConfigField("String", "GIT_COMMIT", "\"${gitCommit()}\"")
         // Base url of the remote config service. Empty = no request, compiled-in defaults.
         val configUrl = remoteConfigUrl()
@@ -156,18 +157,22 @@ dependencies {
     implementation(Libs.AndroidX.activityCompose)
     implementation(Libs.Kotlinx.coroutinesAndroid)
     implementation(project(":kmpHttp:core"))
-    implementation(project(":projectCommon")) // LoggingWorker/FileLogger
+    implementation(project(":projectCommon"))
+    implementation(project(":quickjs")) // QuickJsRuntime.hostVersions
     implementation(project(":remote-config"))
     implementation(project(":yt-media")) // the player-cache router (LocalMediaProxy) for the WebView
     implementation(Libs.Media3.session)
     implementation(project(":telemetry")) // api: sentry-kotlin-multiplatform + SentryLogger
+    implementation(project(":log-store")) // the app log (logs.db)
     // androidx.media.app.NotificationCompat.MediaStyle for the playback notification.
     implementation("androidx.media:media:1.7.0")
     implementation(compose.material3)
     implementation(compose.foundation)
+    implementation(compose.materialIconsExtended)
     implementation(compose.components.resources)
     implementation(Libs.AndroidX.biometric)
     implementation(Libs.AndroidX.palette) // widget colours from the cover
+    implementation(Libs.AndroidX.carApp) // CarConnection: Android Auto is projecting
     implementation(Libs.AndroidX.fragment)
     implementation(Libs.AndroidX.cameraCore)
     implementation(Libs.AndroidX.cameraCamera2)

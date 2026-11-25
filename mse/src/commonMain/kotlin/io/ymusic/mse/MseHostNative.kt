@@ -9,6 +9,10 @@ expect object MseHostNative {
 
     fun frames(handle: Long): Int
 
+    fun droppedFrames(handle: Long): Int
+
+    fun videoDecoder(handle: Long): String
+
     fun samplesPlayed(handle: Long): Long
 
     fun copyFrame(handle: Long, afterGen: Int = -1): NativeMseFrame?
@@ -26,6 +30,9 @@ expect object MseHostNative {
     fun setVirtualizer(handle: Long, width: Float)
 
     fun setPreamp(handle: Long, db: Float)
+
+    /** The picture is off screen: rest the video decoder, keep buffering the chosen quality. */
+    fun setVideoHidden(handle: Long, hidden: Boolean)
 
     /** Fixed-position log-frequency bars in 0..1. Returns count written. */
     fun pcmLevels(handle: Long, out: FloatArray): Int

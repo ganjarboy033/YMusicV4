@@ -6,14 +6,19 @@ object Versions {
     const val compileSdk = 36
     const val minSdk = 24
 
+    /** The oldest macOS the desktop app runs on: Compose Desktop's floor and the first Apple-silicon release.
+     *  Every macOS native passes it as its deployment target — without one, a dylib records the build
+     *  host's OS as its minimum and will not load on anything older. */
+    const val macosMin = "11.0"
+
     /** The scrape bundle's (engine.js) self-declared revision — BUMP MANUALLY on every remote push of
      *  it. Feeds its inlined BACKEND_VERSION, its embedded-const version and each shell's
      *  ENGINE_JS_VERSION. A remote engine.js applies only above the embedded revision. */
-    const val engineJsVersion = 85L
+    const val engineJsVersion = 104L
 
     /** The MSE player bundle's (player.js) revision — independent of [engineJsVersion]; BUMP
      *  MANUALLY on every remote push of it. Feeds its inlined BACKEND_VERSION and PLAYER_JS_VERSION. */
-    const val playerJsVersion = 96L
+    const val playerJsVersion = 154L
     const val targetSdk = 35
 
     // KMP
@@ -22,6 +27,7 @@ object Versions {
     const val kotlinxSerialization = "1.9.0"
     const val kotlinxDateTime = "0.8.0"
     const val composeMultiplatform = "1.11.1"
+    const val navigationEvent = "1.0.1" // the androidx.navigationevent composeMultiplatform ships with
     const val okhttp = "5.4.0"
     const val okio = "3.17.0"
     const val sqldelight = "2.3.2"
@@ -36,6 +42,7 @@ object Versions {
     const val lifecycleRuntimeKtx = "2.8.7"
     const val activityCompose = "1.9.3"
     const val cameraX = "1.4.2"
+    const val carApp = "1.7.0"
     const val composeBom = "2024.12.01"
 
     // JS toolchain (:engine-js, run via npx — Node required at build)
@@ -74,6 +81,7 @@ object Libs {
         const val activityCompose = "androidx.activity:activity-compose:${Versions.activityCompose}"
         const val biometric = "androidx.biometric:biometric:1.1.0"
         const val palette = "androidx.palette:palette:1.0.0"
+        const val carApp = "androidx.car.app:app:${Versions.carApp}"
 
         // biometric 1.1.0 drags in fragment 1.2.5, whose FragmentActivity rejects the request codes
         // registerForActivityResult issues ("Can only use lower 16 bits for requestCode").
@@ -146,6 +154,10 @@ object Libs {
 
     object Jna {
         const val core = "net.java.dev.jna:jna:${Versions.jna}"
+    }
+
+    object NavigationEvent {
+        const val compose = "org.jetbrains.androidx.navigationevent:navigationevent-compose:${Versions.navigationEvent}"
     }
 
     object Sentry {

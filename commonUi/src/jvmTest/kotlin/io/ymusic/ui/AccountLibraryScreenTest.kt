@@ -1,12 +1,14 @@
 package io.ymusic.ui
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -16,6 +18,7 @@ import io.ymusic.dynamicengine.DynamicEngineManager
 import io.ymusic.dynamicengine.embeddedEngineJsSource
 import io.ymusic.dynamicengine.yt.extractAccountLibrary
 import io.ymusic.dynamicengine.yt.extractChannelDetail
+import io.ymusic.settings.InMemorySettingsStore
 import kmphttp.CookieBuilder
 import kmphttp.saveFromResponse
 import kmphttp.toHttpUrl
@@ -35,6 +38,8 @@ import kotlin.test.assertTrue
  * LIVE `/feed/you` capture (2026-07-30: richShelfRenderer shelves, playlist lockups with
  * "Private · Playlist" metadata rows and count thumbnail badges).
  */
+private val hasTabRole = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
+
 @OptIn(ExperimentalTestApi::class)
 class AccountLibraryScreenTest {
 
@@ -158,8 +163,8 @@ class AccountLibraryScreenTest {
         runBlocking { engines.start() }
         try {
             runComposeUiTest {
-                setContent { App(AppGraph(engines = engines, player = StubPlayer(), playerSurface = {})) }
-                onNodeWithContentDescription("Library").performClick()
+                setContent { App(AppGraph(settings = InMemorySettingsStore(), engines = engines, player = StubPlayer(), playerSurface = {})) }
+                onNode(hasActionLabel("Library") and hasTabRole).performClick()
                 waitUntilAtLeastOneExists(hasText("Sign in with YouTube"), 20_000)
                 onAllNodesWithText("Watch history").assertCountEquals(0)
             }
@@ -179,8 +184,8 @@ class AccountLibraryScreenTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         try {
             runComposeUiTest {
-                setContent { App(AppGraph(engines = engines, player = StubPlayer(), playerSurface = {})) }
-                onNodeWithContentDescription("Library").performClick()
+                setContent { App(AppGraph(settings = InMemorySettingsStore(), engines = engines, player = StubPlayer(), playerSurface = {})) }
+                onNode(hasActionLabel("Library") and hasTabRole).performClick()
 
                 // The account card (from account_menu) over the cookie gate.
                 waitUntilAtLeastOneExists(hasText("Mock Account"), 20_000)
@@ -196,8 +201,8 @@ class AccountLibraryScreenTest {
                 waitUntilAtLeastOneExists(hasText("Playlists"), 20_000)
                 assertTrue(onAllNodesWithText("View all").fetchSemanticsNodes().isNotEmpty())
                 onAllNodes(hasScrollAction()).onFirst()
-                    .performScrollToNode(hasText("Private · Playlist"))
-                waitUntilAtLeastOneExists(hasText("Private · Playlist"), 20_000)
+                    .performScrollToNode(hasText("Private · Playlist", substring = true))
+                waitUntilAtLeastOneExists(hasText("Private · Playlist", substring = true), 20_000)
 
                 // The Watch history nav row opens the GENERIC feed page — the FEhistory browse
                 // fires and no channel chrome (Subscribe) appears.

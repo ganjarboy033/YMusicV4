@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import projectcommon.log.captureUnlessEnvironmental
 import java.io.File
 import androidx.media3.session.R as Media3R
 
@@ -70,7 +71,12 @@ abstract class PlayerWidgetProvider : AppWidgetProvider() {
             try {
                 app.widgets.refresh()
             } finally {
-                pending.finish()
+                try {
+                    pending.finish()
+                } catch (e: IllegalStateException) {
+                    // Some ROMs finish a goAsync broadcast themselves before the receiver does.
+                    app.rootLogger.fork("widget").log(Logger.Level.WARN, "widget broadcast was already finished", e)
+                }
             }
         }
     }
@@ -160,7 +166,14 @@ class PlayerWidgets(
             flowOf(null)
         } else {
             store.changes.onStart { emit(Unit) }.map {
-                store.sessions().firstOrNull()?.let { WidgetTrack(it.title, it.subtitle, it.thumbnailUrl) }
+                try {
+                    store.sessions().firstOrNull()?.let { WidgetTrack(it.title, it.subtitle, it.thumbnailUrl) }
+                } catch (c: CancellationException) {
+                    throw c
+                } catch (e: Exception) {
+                    log.captureUnlessEnvironmental(e, "widget last-played session failed to load")
+                    null
+                }
             }
         }
         val fallback = player.queue.map { it.currentItem == null }.distinctUntilChanged()

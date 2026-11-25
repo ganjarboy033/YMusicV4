@@ -194,7 +194,7 @@ internal fun ArrangePlaylistDialog(
 
 /** Songs the playlist holds but the library can't resolve right now aren't shown; they keep their place after the arranged ones. */
 private suspend fun saveArrangement(store: BetterMediaStore, playlistId: Long, arrange: ArrangeState) {
-    arrange.removedCodes.forEach { store.removeFromPlaylist(playlistId, it) }
+    store.removeCodesFromPlaylist(playlistId, arrange.removedCodes)
     val arranged = arrange.items.map { it.code }
     val shown = arranged.toSet()
     val unresolved = store.playlistItems(playlistId).map { it.code }.filter { it !in shown }
@@ -210,12 +210,13 @@ private fun StackingChip(size: Int, onReset: () -> Unit) {
             .border(1.dp, DesignColors.Accent, RoundedCornerShape(999.dp))
             .background(DesignColors.Accent.copy(alpha = 0.14f))
             .clickable(onClick = onReset)
+            .a11yActionLabel("$label, ${stringResource(Res.string.cd_reset_stacking)}")
             .padding(start = 12.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(DesignSpacing.Space4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = DesignColors.Accent))
-        Icon(Icons.Default.Close, stringResource(Res.string.cd_reset_stacking), Modifier.size(14.dp), tint = DesignColors.Accent)
+        Text(label, style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = DesignColors.Accent), modifier = Modifier.a11ySilent())
+        Icon(Icons.Default.Close, null, Modifier.size(14.dp), tint = DesignColors.Accent)
     }
 }
 

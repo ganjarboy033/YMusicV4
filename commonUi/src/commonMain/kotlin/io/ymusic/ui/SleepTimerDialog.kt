@@ -24,9 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.ymusic.ui.resources.Res
@@ -71,14 +73,24 @@ internal fun SleepTimerButton(
     sleepMs: Long?,
     afterCurrent: Boolean,
     lastMinutes: Int,
+    offTint: Color = DesignColors.InkMuted,
+    iconSize: Dp = 24.dp,
+    hitSize: Dp = 40.dp,
     onChoose: (SleepChoice) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     HoldVideoOverlay(open)
+    val armed = when {
+        sleepMs != null -> stringResource(Res.string.sleep_pausing_in, spokenDuration((sleepMs + 59_999) / 60_000 * 60_000))
+        afterCurrent -> stringResource(Res.string.sleep_pausing_after_track)
+        else -> null
+    }
     ActionIcon(
         painterResource(Res.drawable.ic_sleep_timer),
-        stringResource(Res.string.cd_sleep_timer),
-        tint = if (sleepMs != null || afterCurrent) DesignColors.Accent else DesignColors.InkMuted,
+        listOfNotNull(stringResource(Res.string.cd_sleep_timer), armed).joinToString(", "),
+        iconSize = iconSize,
+        hitSize = hitSize,
+        tint = if (sleepMs != null || afterCurrent) DesignColors.Accent else offTint,
         onClick = { open = true },
     )
     if (open) {
@@ -150,6 +162,7 @@ internal fun SleepTimerDialog(
                     if (endOfTrack) stringResource(Res.string.sleep_end_of_track) else durationLabel(minutes),
                     style = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.SemiBold, color = DesignColors.InkStrong),
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.a11ySilent(),
                 )
                 Text(
                     if (endOfTrack) {
@@ -177,6 +190,11 @@ internal fun SleepTimerDialog(
                 trackHeight = 4.dp,
                 barHeight = 32.dp,
                 modifier = Modifier.fillMaxWidth(),
+                a11y = SliderA11y(
+                    stringResource(Res.string.cd_sleep_timer),
+                    if (endOfTrack) stringResource(Res.string.sleep_end_of_track) else spokenDuration(minutes * 60_000L),
+                    STEP_MINUTES.toFloat() / (MAX_MINUTES - MIN_MINUTES),
+                ),
             )
             FlowRow(
                 Modifier.fillMaxWidth(),
@@ -214,7 +232,9 @@ private fun ArmedCard(sleepMs: Long?, nowMs: Long, onExtend: (() -> Unit)?, onTu
                     stringResource(Res.string.sleep_pausing_after_track)
                 },
                 style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = onCard),
-                modifier = Modifier.weight(1f).padding(horizontal = DesignSpacing.Space8),
+                modifier = Modifier.weight(1f).padding(horizontal = DesignSpacing.Space8).then(
+                    if (sleepMs != null) Modifier.spokenAs(stringResource(Res.string.sleep_pausing_in, spokenDuration(sleepMs))) else Modifier,
+                ),
             )
         }
         if (sleepMs != null) {

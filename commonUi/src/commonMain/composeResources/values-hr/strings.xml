@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Još nema preuzimanja</string>
     <string name="downloads_none_message">Preuzete pjesme i videozapisi reproduciraju se izvanmrežno.</string>
     <string name="downloads_failed">Preuzimanje nije uspjelo</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Prikaži u Finderu</string>
+    <string name="menu_reveal_explorer">Prikaži u Eksploreru za datoteke</string>
+    <string name="menu_reveal_file_manager">Prikaži u upravitelju datoteka</string>
     <string name="section_settings">Postavke</string>
     <string name="section_donate">Doniraj</string>
     <string name="section_feedback">Povratne informacije</string>
@@ -121,8 +125,36 @@
     <string name="yt_playlist_removed_video">%1$s uklonjeno s popisa za reprodukciju</string>
     <string name="cd_add_to_playlist">Dodaj na popis za reprodukciju</string>
     <string name="cd_share">Dijeli</string>
-    <string name="cd_music_video">Glazba</string>
-    <string name="cd_album">Album</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Videozapis</string>
+    <string name="a11y_kind_music_video">Glazbeni videozapis</string>
+    <string name="a11y_kind_live">Prijenos uživo</string>
+    <string name="a11y_kind_playlist">Popis za reprodukciju</string>
+    <string name="a11y_kind_album">Album</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Kanal</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d sat</item>
+        <item quantity="few">%1$d sata</item>
+        <item quantity="other">%1$d sati</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d minuta</item>
+        <item quantity="few">%1$d minute</item>
+        <item quantity="other">%1$d minuta</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d sekunda</item>
+        <item quantity="few">%1$d sekunde</item>
+        <item quantity="other">%1$d sekundi</item>
+    </plurals>
+    <string name="a11y_now_playing">Upravo svira</string>
+    <string name="a11y_playback_position">Položaj reprodukcije</string>
+    <string name="a11y_x_of_y">%1$s, ukupno %2$s</string>
+    <string name="a11y_behind_live">%1$s iza prijenosa uživo</string>
+    <string name="a11y_downloaded">Preuzeto</string>
+    <string name="a11y_eq_preamp">Pretpojačalo</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Mape</string>
@@ -170,6 +202,12 @@
     <string name="menu_remove_from_playlist">Ukloni s popisa za reprodukciju</string>
     <string name="playlist_delete_title">Izbrisati popis?</string>
     <string name="playlist_delete_message">„%1$s” bit će uklonjen. Pjesme ostaju u vašoj zbirci.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Ukloniti %1$d pjesmu s popisa za reprodukciju?</item>
+        <item quantity="few">Ukloniti %1$d pjesme s popisa za reprodukciju?</item>
+        <item quantity="other">Ukloniti %1$d pjesama s popisa za reprodukciju?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">Pjesme ostaju u vašoj zbirci.</string>
     <string name="add_to_playlist_new">Novi popis…</string>
     <string name="playlist_recent_play">Nedavno reproducirano</string>
     <string name="playlist_top_tracks">Najbolje pjesme</string>
@@ -227,7 +265,6 @@
     <string name="settings_debug">Otklanjanje pogrešaka</string>
     <string name="settings_show_fps">Prikaži FPS</string>
     <string name="settings_show_fps_hint">Prikazuje broj sličica u sekundi preko videozapisa na zaslonu Sada svira. Mjerenje se zaustavlja pri pauzi ili kad napustite zaslon.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Licence otvorenog koda</string>
     <string name="settings_terms">Uvjeti i privatnost</string>
     <string name="settings_licenses_intro">YMusic je otvorenog koda pod licencom GNU GPL v3.0. Uključuje ove komponente:</string>
@@ -264,6 +301,10 @@
     <string name="cd_search">Traži</string>
     <string name="cd_back">Natrag</string>
     <string name="cd_clear">Očisti</string>
+    <string name="cd_voice_search">Glasovno pretraživanje</string>
+    <string name="voice_search_press_ok">Pritisnite OK za glasovno pretraživanje</string>
+    <string name="voice_search_listening">Slušam…</string>
+    <string name="voice_search_missed">Nije razumljivo. Pritisnite OK da biste pokušali ponovno</string>
     <string name="cd_close">Zatvori</string>
     <string name="cd_more">Više</string>
     <string name="cd_collapse">Sažmi</string>
@@ -273,10 +314,14 @@
     <string name="cd_download">Preuzmi</string>
     <string name="cd_fullscreen">Cijeli zaslon</string>
     <string name="cd_exit_fullscreen">Izađi iz cijelog zaslona</string>
+    <string name="cd_show_queue">Prikaži red</string>
+    <string name="cd_hide_queue">Sakrij red</string>
     <string name="cd_fit_video">Prilagodi videozapis</string>
     <string name="cd_fill_video">Ispuni zaslon</string>
-    <string name="cd_lock_rotation">Zaključaj rotaciju</string>
-    <string name="cd_unlock_rotation">Otključaj rotaciju</string>
+    <string name="cd_screen_rotation">Zakretanje zaslona</string>
+    <string name="rotation_lock_landscape">Zaključaj vodoravno</string>
+    <string name="rotation_lock_portrait">Zaključaj okomito</string>
+    <string name="rotation_free">Slobodno zakretanje</string>
     <string name="cd_rewind10">Premotaj 10 sekundi unatrag</string>
     <string name="cd_forward10">Premotaj 10 sekundi unaprijed</string>
     <string name="cd_repeat_off">Ponavljanje: isključeno</string>
@@ -364,7 +409,6 @@
     <string name="account_sign_out">Odjava</string>
     <string name="account_switch">Promijeni račun</string>
     <string name="switch_account_hint">Odaberite željeni račun, a zatim zatvorite ovaj zaslon strelicom natrag — aplikacija će se osvježiti s novim računom.</string>
-    <string name="cd_account_avatar">Slika računa</string>
     <string name="account_my_channel">Moj kanal</string>
     <string name="account_watch_history">Povijest gledanja</string>
     <string name="account_watch_later">Gledaj kasnije</string>
@@ -386,6 +430,8 @@
     <string name="settings_audio_focus_apps">Pauziraj kada druge aplikacije reproduciraju zvuk</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Automatski preskače sponzorirane dijelove u YouTube videozapisima. Za pojedini videozapis isključite na zaslonu Sada svira.</string>
+    <string name="settings_stable_volume">Stabilna glasnoća</string>
+    <string name="settings_stable_volume_hint">Ujednačuje glasne i tihe dijelove i reproducira svaku pjesmu sličnom glasnoćom.</string>
     <string name="sponsor_block_included">SponsorBlock uključen za ovaj videozapis</string>
     <string name="sponsor_block_excluded">SponsorBlock isključen za ovaj videozapis</string>
     <string name="settings_sound">Zvuk</string>
@@ -430,11 +476,9 @@
     <string name="download_more_qualities">+%1$d više</string>
     <string name="download_down_to">sve do %1$s</string>
     <string name="download_less">Manje</string>
-    <string name="download_webm_detail">WebM · izvorni stream</string>
+    <string name="download_webm_detail">Opus · izvorni stream</string>
     <string name="download_m4a_detail">AAC · izvorni stream</string>
-    <string name="download_mp3_detail">%1$d kbps · radi svugdje</string>
-    <string name="settings_mp3_source_bitrate">Preuzmi MP3 u izvornoj brzini prijenosa</string>
-    <string name="settings_mp3_source_bitrate_hint">Kodiraj MP3 na oko 256 kbps (promjenjiva brzina prijenosa) umjesto 320 kbps. Manje datoteke, ista kvaliteta.</string>
+    <string name="download_mp3_detail">Radi svugdje</string>
     <string name="download_audio_track">Audiozapis</string>
     <string name="download_captions">Titlovi</string>
     <string name="download_captions_off">Isključeno</string>
@@ -461,7 +505,7 @@
     <string name="download_no_subtitles">Nema dostupnih</string>
     <string name="dialog_ok_done">Gotovo</string>
     <string name="download_captions_as_lyrics">%1$s · kao tekst pjesme</string>
-    <string name="download_lyrics_note">MP3 čuva titlove kao tekst pjesme, koji prikazuju playeri što podržavaju tekstove.</string>
+    <string name="download_lyrics_note">Ovaj format čuva titlove kao tekst pjesme, koji prikazuju playeri što podržavaju tekstove.</string>
     <string name="download_caption_translated">%1$s (automatski prevedeno)</string>
     <string name="download_live_unsupported">Videozapis UŽIVO nije moguće preuzeti</string>
     <string name="download_save_quick">Spremi kao Brzo preuzimanje</string>
@@ -510,6 +554,13 @@
     <string name="dialog_ok">U redu</string>
     <string name="folder_picker_disabled">Sustavna aplikacija Datoteke je isključena. Uključite je da biste odabrali mapu.</string>
     <string name="folder_picker_open_settings">Otvori postavke</string>
+    <string name="folder_picker_title">Odaberite mapu s glazbom</string>
+    <string name="folder_picker_use_folder">Koristi ovu mapu</string>
+    <string name="folder_picker_empty">Ovdje nema mapa</string>
+    <string name="folder_picker_storage_denied">Da biste odabrali mapu, u postavkama dopustite pristup glazbenim datotekama.</string>
+    <string name="folder_picker_companion_message">Ovaj uređaj nema alat za odabir mapa. Za odabir mapa preuzmite i instalirajte YMusic Files, malu pomoćnu aplikaciju za YMusic, s ove poveznice pa pokušajte ponovno.</string>
+    <string name="folder_picker_companion_update">YMusic Files treba ažurirati da bi radio s ovom verzijom YMusica. Preuzmite i instalirajte najnoviju verziju s ove poveznice pa pokušajte ponovno.</string>
+    <string name="folder_picker_companion_open">Otvori poveznicu</string>
     <string name="folder_picker_missing">Ovaj uređaj nema alat za odabir mape, pa se mapa ne može odabrati.</string>
     <string name="error_supervised_account">Ovaj Google račun je pod nadzorom pa se YouTube ovdje ne može koristiti. Odjavite se ili prijeđite na drugi račun.</string>
     <string name="settings_player_cache">Predmemorija playera</string>
@@ -556,6 +607,24 @@
     <string name="video_details_delete_title">Izbriši komentar</string>
     <string name="video_details_delete_message">Trajno izbrisati vaš komentar i sve odgovore na njega?</string>
     <string name="video_details_deleted">Komentar izbrisan</string>
+    <string name="cookie_protect_title">Zaštititi prijavu zaporkom?</string>
+    <string name="cookie_protect_body">Vaša prijava spremljena je na ovom računalu, gdje je mogu čitati druge aplikacije koje pokrećete. Postavite zaporku da biste je zaključali; YMusic će je tražiti pri svakom pokretanju.</string>
+    <string name="cookie_password">Zaporka</string>
+    <string name="cookie_protect_confirm">Potvrdite zaporku</string>
+    <string name="cookie_protect_mismatch">Zaporke se ne podudaraju.</string>
+    <string name="cookie_protect_submit">Zaštiti</string>
+    <string name="cookie_protect_skip">Ne sada</string>
+    <string name="cookie_unlock_title">Otključajte prijavu</string>
+    <string name="cookie_unlock_body">Vaša prijava na YouTube zaštićena je zaporkom.</string>
+    <string name="cookie_unlock_submit">Otključaj</string>
+    <string name="cookie_unlock_wrong">Pogrešna zaporka.</string>
+    <string name="cookie_unlock_cant_unlock">Ne možete otključati?</string>
+    <string name="cookie_unlock_guest">Nastavi kao gost</string>
+    <string name="cookie_unlock_guest_hint">Pokreće se bez prijave. Ništa se ne sprema.</string>
+    <string name="cookie_unlock_sign_out">Odjava</string>
+    <string name="cookie_unlock_sign_out_hint">Uklanja ovu spremljenu prijavu.</string>
+    <string name="cookie_unlock_sign_out_title">Odjaviti se?</string>
+    <string name="cookie_unlock_sign_out_body">Time ćete ukloniti spremljenu prijavu s ovog računala. Da biste se ponovno prijavili, skenirajte QR kod aplikacijom YMusic.</string>
     <string name="menu_details_comments">Detalji i komentari</string>
     <string name="menu_search_lyrics">Traži tekst pjesme</string>
     <string name="menu_speed_pitch">Brzina i visina tona</string>
@@ -575,4 +644,70 @@
     <string name="download_other_format">Preuzmi u drugom formatu</string>
     <string name="unsubscribe">Otkaži pretplatu</string>
     <string name="unsubscribed">Pretplata otkazana</string>
+    <string name="tray_pause">Pauziraj</string>
+    <string name="tray_resume">Nastavi</string>
+    <string name="tray_stop">Zaustavi (očisti red)</string>
+    <string name="tray_quit">Zatvori</string>
+    <string name="shortcuts_title">Tipkovnički prečaci</string>
+    <string name="shortcuts_play_pause">Reproduciraj / pauziraj</string>
+    <string name="shortcuts_now_playing">Prikaži ili sakrij Sada svira</string>
+    <string name="shortcuts_nav_menu">Otvori ili zatvori izbornik</string>
+    <string name="shortcuts_switch_tabs">Promijeni karticu</string>
+    <string name="shortcuts_escape">Izađi iz cijelog zaslona ili zatvori Sada svira, izbornik ili skočni prozor</string>
+    <string name="shortcuts_help">Prikaži ovu pomoć</string>
+    <string name="shortcuts_volume_up">Pojačaj glasnoću</string>
+    <string name="shortcuts_volume_down">Smanji glasnoću</string>
+    <string name="a11y_key_arrow_left">strelica lijevo</string>
+    <string name="a11y_key_arrow_right">strelica desno</string>
+    <string name="a11y_key_arrow_up">strelica gore</string>
+    <string name="a11y_key_arrow_down">strelica dolje</string>
+    <string name="cd_always_on_top">Uvijek na vrhu</string>
+    <string name="settings_caption_size">Veličina</string>
+    <string name="caption_size_preview">Titlovi će izgledati ovako</string>
+    <string name="settings_caption_style">Stil titlova</string>
+    <string name="settings_caption_style_hint">Veličina, boja i pozadina titlova videozapisa</string>
+    <string name="caption_text_color">Boja teksta</string>
+    <string name="caption_background">Pozadina</string>
+    <string name="caption_background_opacity">Neprozirnost pozadine</string>
+    <string name="download_quality_save">Štednja</string>
+    <string name="download_quality_medium">Srednja</string>
+    <string name="download_quality_best">Najbolja</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows je blokirao dio aplikacije YMusic.</string>
+    <string name="media_engine_unavailable">Glazba i videozapisi ovdje se ne mogu reproducirati, ali i dalje možete pregledavati i pretraživati.</string>
+    <string name="native_blocked_help">Na poslovnom ili školskom računalu zamolite administratora da dopusti YMusic. Na vlastitom računalu provjerite Smart App Control u Sigurnosti sustava Windows.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Osvježavanje</string>
+    <string name="a11y_loading">Učitavanje</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Odaberi sve</string>
+    <string name="downloads_action_select">Odaberi</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">Odabrano: %1$d</item>
+        <item quantity="few">Odabrano: %1$d</item>
+        <item quantity="other">Odabrano: %1$d</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Ukloniti %1$d preuzimanje s popisa?</item>
+        <item quantity="few">Ukloniti %1$d preuzimanja s popisa?</item>
+        <item quantity="other">Ukloniti %1$d preuzimanja s popisa?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Dovršene datoteke ostaju na ovom uređaju.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Izbrisati %1$d datoteku?</item>
+        <item quantity="few">Izbrisati %1$d datoteke?</item>
+        <item quantity="other">Izbrisati %1$d datoteka?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Izbrisane datoteke ne mogu se vratiti.</string>
+    <string name="downloads_cancel_selected">Otkaži preuzimanja</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Otkazati %1$d preuzimanje?</item>
+        <item quantity="few">Otkazati %1$d preuzimanja?</item>
+        <item quantity="other">Otkazati %1$d preuzimanja?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">Dosad preuzeti sadržaj bit će izbrisan.</string>
+    <string name="downloads_cancel_selected_keep">Zadrži</string>
+    <string name="data_dir_unusable">YMusic ne može otvoriti svoju mapu s podacima, %1$s. Provjerite je li to mapa u koju možete pisati, a zatim ponovno otvorite YMusic. (%2$s)</string>
 </resources>

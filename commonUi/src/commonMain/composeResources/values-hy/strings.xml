@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Դեռ ներբեռնումներ չկան</string>
     <string name="downloads_none_message">Ներբեռնված երգերն ու տեսանյութերը նվագարկվում են անցանց։</string>
     <string name="downloads_failed">Ներբեռնումը ձախողվեց</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Ցույց տալ Finder-ում</string>
+    <string name="menu_reveal_explorer">Ցույց տալ File Explorer-ում</string>
+    <string name="menu_reveal_file_manager">Ցույց տալ ֆայլերի կառավարիչում</string>
     <string name="section_settings">Կարգավորումներ</string>
     <string name="section_donate">Նվիրաբերել</string>
     <string name="section_feedback">Հետադարձ կապ</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">%1$s-ը հեռացվեց երգացանկից</string>
     <string name="cd_add_to_playlist">Ավելացնել երգացանկում</string>
     <string name="cd_share">Կիսվել</string>
-    <string name="cd_music_video">Երաժշտություն</string>
-    <string name="cd_album">Ալբոմ</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Տեսանյութ</string>
+    <string name="a11y_kind_music_video">Տեսահոլովակ</string>
+    <string name="a11y_kind_live">Ուղիղ եթեր</string>
+    <string name="a11y_kind_playlist">Երգացանկ</string>
+    <string name="a11y_kind_album">Ալբոմ</string>
+    <string name="a11y_kind_mix">Միքս</string>
+    <string name="a11y_kind_channel">Ալիք</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d ժամ</item>
+        <item quantity="other">%1$d ժամ</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d րոպե</item>
+        <item quantity="other">%1$d րոպե</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d վայրկյան</item>
+        <item quantity="other">%1$d վայրկյան</item>
+    </plurals>
+    <string name="a11y_now_playing">Հիմա նվագվում է</string>
+    <string name="a11y_playback_position">Նվագարկման դիրքը</string>
+    <string name="a11y_x_of_y">%1$s, ընդամենը %2$s</string>
+    <string name="a11y_behind_live">Ուղիղ եթերից %1$s հետ</string>
+    <string name="a11y_downloaded">Ներբեռնված է</string>
+    <string name="a11y_eq_preamp">Նախաուժեղարար</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Թղթապանակներ</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">Հեռացնել երգացանկից</string>
     <string name="playlist_delete_title">Ջնջե՞լ երգացանկը</string>
     <string name="playlist_delete_message">«%1$s»-ը կհեռացվի։ Երգերը կմնան ձեր գրադարանում։</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Հեռացնե՞լ %1$d երգ երգացանկից</item>
+        <item quantity="other">Հեռացնե՞լ %1$d երգ երգացանկից</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">Երգերը կմնան ձեր գրադարանում։</string>
     <string name="add_to_playlist_new">Նոր երգացանկ…</string>
     <string name="playlist_recent_play">Վերջերս նվագարկված</string>
     <string name="playlist_top_tracks">Լավագույն երգեր</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">Վրիպազերծում</string>
     <string name="settings_show_fps">Ցույց տալ FPS-ը</string>
     <string name="settings_show_fps_hint">Ցուցադրում է կադրերի քանակը վայրկյանում «Հիմա հնչում է» տեսանյութի վրա։ Չափումը դադարում է դադարի ժամանակ կամ էկրանից դուրս գալիս։</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Բաց կոդի լիցենզիաներ</string>
     <string name="settings_terms">Պայմաններ և գաղտնիություն</string>
     <string name="settings_licenses_intro">YMusic-ը բաց կոդով է՝ GNU GPL v3.0 լիցենզիայով։ Այն ներառում է հետևյալ բաղադրիչները՝</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">Որոնել</string>
     <string name="cd_back">Հետ</string>
     <string name="cd_clear">Մաքրել</string>
+    <string name="cd_voice_search">Ձայնային որոնում</string>
+    <string name="voice_search_press_ok">Սեղմեք OK՝ ձայնով որոնելու համար</string>
+    <string name="voice_search_listening">Լսում է…</string>
+    <string name="voice_search_missed">Չհաջողվեց հասկանալ։ Սեղմեք OK՝ նորից փորձելու համար</string>
     <string name="cd_close">Փակել</string>
     <string name="cd_more">Ավելին</string>
     <string name="cd_collapse">Ծալել</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">Ներբեռնել</string>
     <string name="cd_fullscreen">Լիաէկրան</string>
     <string name="cd_exit_fullscreen">Դուրս գալ լիաէկրանից</string>
+    <string name="cd_show_queue">Ցույց տալ հերթը</string>
+    <string name="cd_hide_queue">Թաքցնել հերթը</string>
     <string name="cd_fit_video">Տեղավորել տեսանյութը</string>
     <string name="cd_fill_video">Լցնել էկրանը</string>
-    <string name="cd_lock_rotation">Կողպել պտտումը</string>
-    <string name="cd_unlock_rotation">Ապակողպել պտտումը</string>
+    <string name="cd_screen_rotation">Էկրանի պտտում</string>
+    <string name="rotation_lock_landscape">Կողպել հորիզոնական</string>
+    <string name="rotation_lock_portrait">Կողպել ուղղահայաց</string>
+    <string name="rotation_free">Ազատ պտտում</string>
     <string name="cd_rewind10">10 վայրկյան հետ</string>
     <string name="cd_forward10">10 վայրկյան առաջ</string>
     <string name="cd_repeat_off">Կրկնել: անջատված</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">Դուրս գալ</string>
     <string name="account_switch">Փոխել հաշիվը</string>
     <string name="switch_account_hint">Ընտրեք ցանկալի հաշիվը, ապա փակեք այս էկրանը հետ սլաքով — հավելվածը կթարմացվի նոր հաշվով։</string>
-    <string name="cd_account_avatar">Հաշվի նկար</string>
     <string name="account_my_channel">Իմ ալիքը</string>
     <string name="account_watch_history">Դիտումների պատմություն</string>
     <string name="account_watch_later">Դիտել ավելի ուշ</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">Դադարեցնել, երբ այլ հավելվածներ ձայն են նվագարկում</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Ավտոմատ բաց թողնել հովանավորվող հատվածները YouTube տեսանյութերում։ Կոնկրետ տեսանյութի համար անջատեք «Հիմա հնչում է» էկրանից։</string>
+    <string name="settings_stable_volume">Կայուն ձայնի ուժգնություն</string>
+    <string name="settings_stable_volume_hint">Հավասարեցնում է բարձր և ցածր հատվածները և նվագարկում յուրաքանչյուր երգ նման ուժգնությամբ։</string>
     <string name="sponsor_block_included">SponsorBlock-ը միացված է այս տեսանյութի համար</string>
     <string name="sponsor_block_excluded">SponsorBlock-ը անջատված է այս տեսանյութի համար</string>
     <string name="settings_sound">Ձայն</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d ևս</string>
     <string name="download_down_to">մինչև %1$s</string>
     <string name="download_less">Ավելի քիչ</string>
-    <string name="download_webm_detail">WebM · բնօրինակ հոսք</string>
+    <string name="download_webm_detail">Opus · բնօրինակ հոսք</string>
     <string name="download_m4a_detail">AAC · բնօրինակ հոսք</string>
-    <string name="download_mp3_detail">%1$d kbps · նվագարկվում է ամենուր</string>
-    <string name="settings_mp3_source_bitrate">Ներբեռնել MP3-ը սկզբնական բիթրեյթով</string>
-    <string name="settings_mp3_source_bitrate_hint">Կոդավորել MP3-ը մոտ 256 kbps-ով (փոփոխական բիթրեյթ)՝ 320 kbps-ի փոխարեն։ Ավելի փոքր ֆայլեր, նույն որակը։</string>
+    <string name="download_mp3_detail">Նվագարկվում է ամենուր</string>
     <string name="download_audio_track">Աուդիո ուղի</string>
     <string name="download_captions">Ենթագրեր</string>
     <string name="download_captions_off">Անջատված</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">Հասանելի չեն</string>
     <string name="dialog_ok_done">Պատրաստ է</string>
     <string name="download_captions_as_lyrics">%1$s · որպես երգի բառեր</string>
-    <string name="download_lyrics_note">MP3-ը պահում է ենթագրերը որպես երգի բառեր, որոնք ցուցադրվում են բառեր կարդացող նվագարկիչներում։</string>
+    <string name="download_lyrics_note">Այս ձևաչափը պահում է ենթագրերը որպես երգի բառեր, որոնք ցուցադրվում են բառեր կարդացող նվագարկիչներում։</string>
     <string name="download_caption_translated">%1$s (ավտոմատ թարգմանված)</string>
     <string name="download_live_unsupported">Հնարավոր չէ ներբեռնել ՈՒՂԻՂ տեսանյութ</string>
     <string name="download_save_quick">Պահել որպես Արագ ներբեռնում</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">Լավ</string>
     <string name="folder_picker_disabled">Համակարգի Ֆայլեր հավելվածն անջատված է։ Միացրեք այն՝ թղթապանակ ընտրելու համար։</string>
     <string name="folder_picker_open_settings">Բացել կարգավորումները</string>
+    <string name="folder_picker_title">Ընտրեք երաժշտության թղթապանակ</string>
+    <string name="folder_picker_use_folder">Օգտագործել այս թղթապանակը</string>
+    <string name="folder_picker_empty">Այստեղ թղթապանակներ չկան</string>
+    <string name="folder_picker_storage_denied">Թղթապանակ ընտրելու համար կարգավորումներում թույլատրեք մուտքը ձեր երաժշտական ֆայլեր։</string>
+    <string name="folder_picker_companion_message">Այս սարքում թղթապանակ ընտրելու գործիք չկա։ Թղթապանակներ ընտրելու համար այս հղումից ներբեռնեք և տեղադրեք YMusic Files-ը՝ YMusic-ի փոքր օգնական հավելվածը, ապա նորից փորձեք։</string>
+    <string name="folder_picker_companion_update">YMusic Files-ը պետք է թարմացվի, որպեսզի աշխատի YMusic-ի այս տարբերակի հետ։ Ներբեռնեք և տեղադրեք վերջին տարբերակը այս հղումից, ապա նորից փորձեք։</string>
+    <string name="folder_picker_companion_open">Բացել հղումը</string>
     <string name="folder_picker_missing">Այս սարքը չունի թղթապանակի ընտրիչ, ուստի թղթապանակ ընտրել հնարավոր չէ։</string>
     <string name="error_supervised_account">Այս Google հաշիվը վերահսկվում է, ուստի YouTube-ն այստեղ հնարավոր չէ օգտագործել։ Դուրս եկեք կամ անցեք այլ հաշվի։</string>
     <string name="settings_player_cache">Նվագարկչի քեշ</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">Ջնջել մեկնաբանությունը</string>
     <string name="video_details_delete_message">Ընդմիշտ ջնջե՞լ ձեր մեկնաբանությունը և դրա բոլոր պատասխանները։</string>
     <string name="video_details_deleted">Մեկնաբանությունը ջնջվեց</string>
+    <string name="cookie_protect_title">Պաշտպանե՞լ ձեր մուտքը գաղտնաբառով</string>
+    <string name="cookie_protect_body">Ձեր մուտքը պահված է այս համակարգչում, որտեղ ձեր գործարկած այլ հավելվածները կարող են կարդալ այն։ Սահմանեք գաղտնաբառ՝ այն կողպելու համար։ YMusic-ը այն կհարցնի ամեն գործարկման ժամանակ։</string>
+    <string name="cookie_password">Գաղտնաբառ</string>
+    <string name="cookie_protect_confirm">Հաստատել գաղտնաբառը</string>
+    <string name="cookie_protect_mismatch">Գաղտնաբառերը չեն համընկնում։</string>
+    <string name="cookie_protect_submit">Պաշտպանել</string>
+    <string name="cookie_protect_skip">Ոչ հիմա</string>
+    <string name="cookie_unlock_title">Ապակողպեք ձեր մուտքը</string>
+    <string name="cookie_unlock_body">Ձեր YouTube մուտքը պաշտպանված է գաղտնաբառով։</string>
+    <string name="cookie_unlock_submit">Ապակողպել</string>
+    <string name="cookie_unlock_wrong">Սխալ գաղտնաբառ։</string>
+    <string name="cookie_unlock_cant_unlock">Չե՞ք կարողանում ապակողպել</string>
+    <string name="cookie_unlock_guest">Շարունակել որպես հյուր</string>
+    <string name="cookie_unlock_guest_hint">Գործարկվում է առանց մուտքի։ Ոչինչ չի պահվում։</string>
+    <string name="cookie_unlock_sign_out">Դուրս գալ</string>
+    <string name="cookie_unlock_sign_out_hint">Հեռացնում է այս պահված մուտքը։</string>
+    <string name="cookie_unlock_sign_out_title">Դուրս գա՞լ</string>
+    <string name="cookie_unlock_sign_out_body">Սա կհեռացնի պահված մուտքը այս համակարգչից։ Կրկին մուտք գործելու համար սկանավորեք QR կոդը YMusic հավելվածով։</string>
     <string name="menu_details_comments">Մանրամասներ և մեկնաբանություններ</string>
     <string name="menu_search_lyrics">Որոնել երգի բառերը</string>
     <string name="menu_speed_pitch">Արագություն և տոն</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">Ներբեռնել այլ ձևաչափով</string>
     <string name="unsubscribe">Չեղարկել բաժանորդագրությունը</string>
     <string name="unsubscribed">Բաժանորդագրությունը չեղարկվեց</string>
+    <string name="tray_pause">Դադար</string>
+    <string name="tray_resume">Շարունակել</string>
+    <string name="tray_stop">Կանգնեցնել (մաքրել հերթը)</string>
+    <string name="tray_quit">Փակել</string>
+    <string name="shortcuts_title">Ստեղնաշարի դյուրանցումներ</string>
+    <string name="shortcuts_play_pause">Նվագարկել / դադարեցնել</string>
+    <string name="shortcuts_now_playing">Ցուցադրել կամ թաքցնել «Հիմա հնչում է» էկրանը</string>
+    <string name="shortcuts_nav_menu">Բացել կամ փակել ընտրացանկը</string>
+    <string name="shortcuts_switch_tabs">Անցնել ներդիրների միջև</string>
+    <string name="shortcuts_escape">Դուրս գալ լիաէկրանից կամ փակել «Հիմա հնչում է» էկրանը, ընտրացանկը կամ ելնող պատուհանը</string>
+    <string name="shortcuts_help">Ցուցադրել այս օգնությունը</string>
+    <string name="shortcuts_volume_up">Բարձրացնել ձայնը</string>
+    <string name="shortcuts_volume_down">Իջեցնել ձայնը</string>
+    <string name="a11y_key_arrow_left">ձախ սլաք</string>
+    <string name="a11y_key_arrow_right">աջ սլաք</string>
+    <string name="a11y_key_arrow_up">վերև սլաք</string>
+    <string name="a11y_key_arrow_down">ներքև սլաք</string>
+    <string name="cd_always_on_top">Միշտ վերևում</string>
+    <string name="settings_caption_size">Չափ</string>
+    <string name="caption_size_preview">Ենթագրերն այսպես կերևան</string>
+    <string name="settings_caption_style">Ենթագրերի ոճ</string>
+    <string name="settings_caption_style_hint">Տեսանյութի ենթագրերի չափը, գույնը և ֆոնը</string>
+    <string name="caption_text_color">Տեքստի գույն</string>
+    <string name="caption_background">Ֆոն</string>
+    <string name="caption_background_opacity">Ֆոնի անթափանցիկություն</string>
+    <string name="download_quality_save">Խնայողական</string>
+    <string name="download_quality_medium">Միջին</string>
+    <string name="download_quality_best">Լավագույն</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows-ն արգելափակել է YMusic-ի մի մասը։</string>
+    <string name="media_engine_unavailable">Երաժշտությունն ու տեսանյութերն այստեղ չեն կարող նվագարկվել, բայց դուք դեռ կարող եք դիտել և որոնել։</string>
+    <string name="native_blocked_help">Աշխատանքային կամ դպրոցական համակարգչում խնդրեք ադմինիստրատորին թույլատրել YMusic-ը։ Ձեր համակարգչում ստուգեք Smart App Control-ը Windows Security-ում։</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Թարմացվում է</string>
+    <string name="a11y_loading">Բեռնվում է</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Ընտրել բոլորը</string>
+    <string name="downloads_action_select">Ընտրել</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">Ընտրված է՝ %1$d</item>
+        <item quantity="other">Ընտրված է՝ %1$d</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Հեռացնե՞լ %1$d ներբեռնում ցանկից</item>
+        <item quantity="other">Հեռացնե՞լ %1$d ներբեռնում ցանկից</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Ավարտված ֆայլերը մնում են այս սարքում։</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Ջնջե՞լ %1$d ֆայլ</item>
+        <item quantity="other">Ջնջե՞լ %1$d ֆայլ</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Ջնջված ֆայլերը հնարավոր չէ վերականգնել։</string>
+    <string name="downloads_cancel_selected">Չեղարկել ներբեռնումները</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Չեղարկե՞լ %1$d ներբեռնում</item>
+        <item quantity="other">Չեղարկե՞լ %1$d ներբեռնում</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">Մինչ այժմ ներբեռնվածը կջնջվի։</string>
+    <string name="downloads_cancel_selected_keep">Պահել</string>
+    <string name="data_dir_unusable">YMusic-ը չի կարող բացել իր տվյալների պանակը՝ %1$s։ Համոզվեք, որ այն պանակ է, որտեղ կարող եք գրել, ապա նորից բացեք YMusic-ը։ (%2$s)</string>
 </resources>

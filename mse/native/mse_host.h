@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 typedef struct MseHost MseHost;
+struct VPresenter;
 
-typedef void (*MseFrameFn)(void *user, int w, int h, const uint8_t *bgra);
 typedef void (*MsePcmFn)(void *user, int rate, int ch, const int16_t *s16, int nbytes);
 typedef void (*MseProgressFn)(void *user, double pos, double dur, int w, int h);
 
@@ -18,13 +18,15 @@ MseHost *mse_host_create(void);
 void mse_host_destroy(MseHost *h);
 /* Function table for QuickJS `__mse*` trampolines. */
 const void *mse_host_vtable(void);
-void mse_host_set_sinks(MseHost *h, MseFrameFn on_frame, MsePcmFn on_pcm, MseProgressFn on_prog, void *user);
+void mse_host_set_sinks(MseHost *h, MsePcmFn on_pcm, MseProgressFn on_prog, void *user);
 /* Host→JS `"event"` pipe. JNI/Apple set this to MseJsEventBridge.fire. */
 void mse_host_set_js_event(void (*fn)(const char *name));
-/* JNI/app: the only host call. JS drives play/pause/currentTime via C trampolines. */
+/* Android: borrowed ANativeWindow. iOS: the Kotlin-owned AVSampleBufferDisplayLayer, shown
+   through a presenter wrapping it. NULL detaches. */
 void mse_host_set_video_surface(MseHost *h, void *window);
-/* JVM desktop: convert/scale dest. 0×0 = decode size. See mse_av_set_blit_size. */
-void mse_host_set_blit_size(MseHost *h, int w, int ht);
+/* Desktop: the presenter video goes to, bound with this host as the token (NULL unbinds). Any
+   thread; the host holds its own reference. */
+void mse_host_bind_presenter(MseHost *h, struct VPresenter *p);
 
 void mse_host_play(MseHost *h);
 void mse_host_pause(MseHost *h);
@@ -41,9 +43,17 @@ int mse_host_ended(MseHost *h);
 void mse_host_end_of_stream(MseHost *h);
 int mse_host_video_size(MseHost *h, int *w, int *ht);
 int mse_host_frames(MseHost *h);
-/* 1 and the reason in out when video cannot be decoded; the player fails playback. */
+/* 1 and the reason in out when video cannot be decoded; the player fails playback. Never blocks:
+   0 while the host is busy, and the failure stays for the next call. */
 int mse_host_video_failure(MseHost *h, char *out, int cap);
 int64_t mse_host_samples_played(MseHost *h);
+/* HTMLVideoElement.getVideoPlaybackQuality since the last load: pictures shown + dropped, and those
+   dropped for missing their time. */
+void mse_host_video_quality(MseHost *h, int *total, int *dropped);
+/* The dropped half of mse_host_video_quality. Never blocks: a busy host repeats the last count. */
+int mse_host_dropped_frames(MseHost *h);
+/* "hw vp9", "sw av1"; "" while no video decoder is open or the host is busy. Never blocks. */
+void mse_host_video_decoder(MseHost *h, char *out, int cap);
 #ifdef __ANDROID__
 /* Android plays the PCM ring through a Kotlin AudioSink thread (MseAudioOutput) driving these. */
 enum { MSE_DAC_GEN, MSE_DAC_RATE, MSE_DAC_CH, MSE_DAC_RUN, MSE_DAC_DRAIN, MSE_DAC_STATE_N };
@@ -60,7 +70,9 @@ int mse_host_dac_poll(MseHost *h, uint8_t *dst, int cap, int wait_ms, int state[
 void mse_host_dac_report(MseHost *h, int gen, int64_t position, int64_t written, int pending, int64_t buffer_us);
 void mse_host_dac_session(MseHost *h, int session);
 #endif
-/* Last decoded BGRA. dst=NULL or cap too small → returns bytes needed (w/h/gen still set). 0 = none. */
+/* The picture on screen as BGRA, when the presenter can read it back (vpresent_snapshot); gen is the
+   presented-frame count. dst=NULL or cap too small → returns bytes needed (w/h/gen still set).
+   0 = none. */
 int mse_host_copy_frame(MseHost *h, uint8_t *dst, int cap, int *w, int *ht, int *gen);
 
 int mse_host_append(MseHost *h, int audio, const uint8_t *p, int n, double ts_off, double win_start, double win_end);
@@ -70,6 +82,8 @@ void mse_host_remove(MseHost *h, int audio, double start, double end);
 void mse_host_abort(MseHost *h, int audio);
 void mse_host_change_type(MseHost *h, int audio);
 void mse_host_rest_video(MseHost *h, int on);
+/* The picture is off screen: rest the video decoder, keep buffering the chosen quality. */
+void mse_host_set_video_hidden(MseHost *h, int hidden);
 int mse_host_buffered(MseHost *h, int audio, double *pairs, int max_pairs);
 
 void mse_host_set_volume(MseHost *h, float vol);

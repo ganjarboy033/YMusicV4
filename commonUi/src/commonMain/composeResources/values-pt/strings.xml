@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Ainda não há downloads</string>
     <string name="downloads_none_message">Músicas e vídeos baixados tocam offline.</string>
     <string name="downloads_failed">Falha no download</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Mostrar no Finder</string>
+    <string name="menu_reveal_explorer">Mostrar no Explorador de Arquivos</string>
+    <string name="menu_reveal_file_manager">Mostrar no gerenciador de arquivos</string>
     <string name="section_settings">Configurações</string>
     <string name="section_donate">Doar</string>
     <string name="section_feedback">Feedback</string>
@@ -121,8 +125,36 @@
     <string name="yt_playlist_removed_video">%1$s removido da playlist</string>
     <string name="cd_add_to_playlist">Adicionar à playlist</string>
     <string name="cd_share">Compartilhar</string>
-    <string name="cd_music_video">Música</string>
-    <string name="cd_album">Álbum</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Vídeo</string>
+    <string name="a11y_kind_music_video">Videoclipe</string>
+    <string name="a11y_kind_live">Vídeo ao vivo</string>
+    <string name="a11y_kind_playlist">Playlist</string>
+    <string name="a11y_kind_album">Álbum</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Canal</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d segundo</item>
+        <item quantity="many">%1$d segundos</item>
+        <item quantity="other">%1$d segundos</item>
+    </plurals>
+    <string name="a11y_now_playing">Tocando agora</string>
+    <string name="a11y_playback_position">Posição da reprodução</string>
+    <string name="a11y_x_of_y">%1$s de %2$s</string>
+    <string name="a11y_behind_live">%1$s atrás do ao vivo</string>
+    <string name="a11y_downloaded">Baixado</string>
+    <string name="a11y_eq_preamp">Pré-amplificador</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Pastas</string>
@@ -170,6 +202,12 @@
     <string name="menu_remove_from_playlist">Remover da playlist</string>
     <string name="playlist_delete_title">Excluir playlist?</string>
     <string name="playlist_delete_message">“%1$s” será removida. As músicas continuam na sua biblioteca.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Remover %1$d música da playlist?</item>
+        <item quantity="many">Remover %1$d músicas da playlist?</item>
+        <item quantity="other">Remover %1$d músicas da playlist?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">As músicas continuam na sua biblioteca.</string>
     <string name="add_to_playlist_new">Nova playlist…</string>
     <string name="playlist_recent_play">Tocadas recentemente</string>
     <string name="playlist_top_tracks">Mais ouvidas</string>
@@ -227,7 +265,6 @@
     <string name="settings_debug">Depuração</string>
     <string name="settings_show_fps">Mostrar FPS</string>
     <string name="settings_show_fps_hint">Mostra os quadros por segundo sobre o vídeo em reprodução. A medição para quando pausado ou quando você sai dessa tela.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Licenças de código aberto</string>
     <string name="settings_terms">Termos e privacidade</string>
     <string name="settings_licenses_intro">O YMusic é de código aberto sob a GNU GPL v3.0. Ele inclui estes componentes:</string>
@@ -264,6 +301,10 @@
     <string name="cd_search">Pesquisar</string>
     <string name="cd_back">Voltar</string>
     <string name="cd_clear">Limpar</string>
+    <string name="cd_voice_search">Pesquisar por voz</string>
+    <string name="voice_search_press_ok">Prima OK para pesquisar por voz</string>
+    <string name="voice_search_listening">A ouvir…</string>
+    <string name="voice_search_missed">Não foi possível perceber. Prima OK para tentar novamente</string>
     <string name="cd_close">Fechar</string>
     <string name="cd_more">Mais</string>
     <string name="cd_collapse">Recolher</string>
@@ -273,10 +314,14 @@
     <string name="cd_download">Baixar</string>
     <string name="cd_fullscreen">Tela cheia</string>
     <string name="cd_exit_fullscreen">Sair da tela cheia</string>
+    <string name="cd_show_queue">Mostrar fila</string>
+    <string name="cd_hide_queue">Ocultar fila</string>
     <string name="cd_fit_video">Ajustar vídeo</string>
     <string name="cd_fill_video">Preencher tela</string>
-    <string name="cd_lock_rotation">Bloquear rotação</string>
-    <string name="cd_unlock_rotation">Desbloquear rotação</string>
+    <string name="cd_screen_rotation">Rotação da tela</string>
+    <string name="rotation_lock_landscape">Bloquear na horizontal</string>
+    <string name="rotation_lock_portrait">Bloquear na vertical</string>
+    <string name="rotation_free">Rotação livre</string>
     <string name="cd_rewind10">Voltar 10 segundos</string>
     <string name="cd_forward10">Avançar 10 segundos</string>
     <string name="cd_repeat_off">Repetir: desativado</string>
@@ -364,7 +409,6 @@
     <string name="account_sign_out">Sair</string>
     <string name="account_switch">Trocar de conta</string>
     <string name="switch_account_hint">Escolha a conta que você quer e feche esta tela com a seta de voltar — o app atualiza com a nova conta.</string>
-    <string name="cd_account_avatar">Foto da conta</string>
     <string name="account_my_channel">Meu canal</string>
     <string name="account_watch_history">Histórico de exibição</string>
     <string name="account_watch_later">Assistir mais tarde</string>
@@ -386,6 +430,8 @@
     <string name="settings_audio_focus_apps">Pausar quando outros apps reproduzirem som</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Pula automaticamente trechos patrocinados em vídeos do YouTube. Desative para um vídeo na tela de reprodução.</string>
+    <string name="settings_stable_volume">Volume estável</string>
+    <string name="settings_stable_volume_hint">Equilibra as partes altas e baixas e toca cada música com um volume parecido.</string>
     <string name="sponsor_block_included">SponsorBlock ativado para este vídeo</string>
     <string name="sponsor_block_excluded">SponsorBlock desativado para este vídeo</string>
     <string name="settings_sound">Som</string>
@@ -430,11 +476,9 @@
     <string name="download_more_qualities">+%1$d outras</string>
     <string name="download_down_to">até %1$s</string>
     <string name="download_less">Menos</string>
-    <string name="download_webm_detail">WebM · stream original</string>
+    <string name="download_webm_detail">Opus · stream original</string>
     <string name="download_m4a_detail">AAC · stream original</string>
-    <string name="download_mp3_detail">%1$d kbps · toca em qualquer lugar</string>
-    <string name="settings_mp3_source_bitrate">Baixar MP3 na taxa de bits original</string>
-    <string name="settings_mp3_source_bitrate_hint">Codificar o MP3 em cerca de 256 kbps (taxa de bits variável) em vez de 320 kbps. Arquivos menores, mesma qualidade.</string>
+    <string name="download_mp3_detail">Toca em qualquer lugar</string>
     <string name="download_audio_track">Faixa de áudio</string>
     <string name="download_captions">Legendas</string>
     <string name="download_captions_off">Desativadas</string>
@@ -461,7 +505,7 @@
     <string name="download_no_subtitles">Nenhuma disponível</string>
     <string name="dialog_ok_done">Concluído</string>
     <string name="download_captions_as_lyrics">%1$s · como letra</string>
-    <string name="download_lyrics_note">O MP3 guarda as legendas como letra, exibida por players que leem letras.</string>
+    <string name="download_lyrics_note">Este formato guarda as legendas como letra, exibida por players que leem letras.</string>
     <string name="download_caption_translated">%1$s (tradução automática)</string>
     <string name="download_live_unsupported">Não é possível baixar um vídeo AO VIVO</string>
     <string name="download_save_quick">Salvar como download rápido</string>
@@ -510,6 +554,13 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">O app Arquivos do sistema está desativado. Ative-o para escolher uma pasta.</string>
     <string name="folder_picker_open_settings">Abrir configurações</string>
+    <string name="folder_picker_title">Escolha uma pasta de música</string>
+    <string name="folder_picker_use_folder">Usar esta pasta</string>
+    <string name="folder_picker_empty">Nenhuma pasta aqui</string>
+    <string name="folder_picker_storage_denied">Permita o acesso aos seus arquivos de música nas configurações para escolher uma pasta.</string>
+    <string name="folder_picker_companion_message">Este dispositivo não tem seletor de pastas. Para escolher pastas, baixe e instale o YMusic Files, um pequeno app auxiliar do YMusic, a partir deste link e tente novamente.</string>
+    <string name="folder_picker_companion_update">O YMusic Files precisa ser atualizado para funcionar com esta versão do YMusic. Baixe e instale a versão mais recente a partir deste link e tente novamente.</string>
+    <string name="folder_picker_companion_open">Abrir link</string>
     <string name="folder_picker_missing">Este dispositivo não tem seletor de pastas, então não é possível escolher uma pasta.</string>
     <string name="error_supervised_account">Esta conta Google é supervisionada, por isso o YouTube não pode ser usado aqui. Saia ou mude para outra conta.</string>
     <string name="settings_player_cache">Cache do player</string>
@@ -556,6 +607,24 @@
     <string name="video_details_delete_title">Excluir comentário</string>
     <string name="video_details_delete_message">Excluir permanentemente seu comentário e todas as respostas?</string>
     <string name="video_details_deleted">Comentário excluído</string>
+    <string name="cookie_protect_title">Proteger seu login com uma senha?</string>
+    <string name="cookie_protect_body">Seu login fica salvo neste computador, onde outros apps que você executa podem lê-lo. Defina uma senha para bloqueá-lo; o YMusic vai pedi-la sempre que abrir.</string>
+    <string name="cookie_password">Senha</string>
+    <string name="cookie_protect_confirm">Confirmar senha</string>
+    <string name="cookie_protect_mismatch">As senhas não coincidem.</string>
+    <string name="cookie_protect_submit">Proteger</string>
+    <string name="cookie_protect_skip">Agora não</string>
+    <string name="cookie_unlock_title">Desbloquear seu login</string>
+    <string name="cookie_unlock_body">Seu login do YouTube está protegido por senha.</string>
+    <string name="cookie_unlock_submit">Desbloquear</string>
+    <string name="cookie_unlock_wrong">Senha incorreta.</string>
+    <string name="cookie_unlock_cant_unlock">Não consegue desbloquear?</string>
+    <string name="cookie_unlock_guest">Continuar como convidado</string>
+    <string name="cookie_unlock_guest_hint">Abre sem login. Nada fica salvo.</string>
+    <string name="cookie_unlock_sign_out">Sair</string>
+    <string name="cookie_unlock_sign_out_hint">Remove este login salvo.</string>
+    <string name="cookie_unlock_sign_out_title">Sair?</string>
+    <string name="cookie_unlock_sign_out_body">Isso remove o login salvo deste computador. Para entrar de novo, escaneie o QR code com o app YMusic.</string>
     <string name="menu_details_comments">Detalhes e comentários</string>
     <string name="menu_search_lyrics">Pesquisar letra</string>
     <string name="menu_speed_pitch">Velocidade e tom</string>
@@ -575,4 +644,70 @@
     <string name="download_other_format">Baixar em outro formato</string>
     <string name="unsubscribe">Cancelar inscrição</string>
     <string name="unsubscribed">Inscrição cancelada</string>
+    <string name="tray_pause">Pausar</string>
+    <string name="tray_resume">Retomar</string>
+    <string name="tray_stop">Parar (limpar a fila)</string>
+    <string name="tray_quit">Fechar</string>
+    <string name="shortcuts_title">Atalhos de teclado</string>
+    <string name="shortcuts_play_pause">Reproduzir / pausar</string>
+    <string name="shortcuts_now_playing">Mostrar ou ocultar a tela de reprodução</string>
+    <string name="shortcuts_nav_menu">Abrir ou fechar o menu</string>
+    <string name="shortcuts_switch_tabs">Alternar abas</string>
+    <string name="shortcuts_escape">Sair da tela cheia ou fechar a tela de reprodução, o menu ou um pop-up</string>
+    <string name="shortcuts_help">Mostrar esta ajuda</string>
+    <string name="shortcuts_volume_up">Aumentar volume</string>
+    <string name="shortcuts_volume_down">Diminuir volume</string>
+    <string name="a11y_key_arrow_left">seta para a esquerda</string>
+    <string name="a11y_key_arrow_right">seta para a direita</string>
+    <string name="a11y_key_arrow_up">seta para cima</string>
+    <string name="a11y_key_arrow_down">seta para baixo</string>
+    <string name="cd_always_on_top">Sempre visível</string>
+    <string name="settings_caption_size">Tamanho</string>
+    <string name="caption_size_preview">As legendas vão ficar assim</string>
+    <string name="settings_caption_style">Estilo das legendas</string>
+    <string name="settings_caption_style_hint">Tamanho, cor e fundo das legendas do vídeo</string>
+    <string name="caption_text_color">Cor do texto</string>
+    <string name="caption_background">Fundo</string>
+    <string name="caption_background_opacity">Opacidade do fundo</string>
+    <string name="download_quality_save">Economia</string>
+    <string name="download_quality_medium">Média</string>
+    <string name="download_quality_best">Melhor</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">O Windows bloqueou uma parte do YMusic.</string>
+    <string name="media_engine_unavailable">Não é possível reproduzir músicas e vídeos aqui, mas você ainda pode navegar e pesquisar.</string>
+    <string name="native_blocked_help">Em um PC de trabalho ou escola, peça ao administrador para permitir o YMusic. No seu PC, verifique o Controle Inteligente de Aplicativos na Segurança do Windows.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Atualizando</string>
+    <string name="a11y_loading">Carregando</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Selecionar tudo</string>
+    <string name="downloads_action_select">Selecionar</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d selecionado</item>
+        <item quantity="many">%1$d selecionados</item>
+        <item quantity="other">%1$d selecionados</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Remover %1$d download da lista?</item>
+        <item quantity="many">Remover %1$d downloads da lista?</item>
+        <item quantity="other">Remover %1$d downloads da lista?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Os arquivos concluídos continuam neste dispositivo.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Excluir %1$d arquivo?</item>
+        <item quantity="many">Excluir %1$d arquivos?</item>
+        <item quantity="other">Excluir %1$d arquivos?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Arquivos excluídos não podem ser recuperados.</string>
+    <string name="downloads_cancel_selected">Cancelar downloads</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Cancelar %1$d download?</item>
+        <item quantity="many">Cancelar %1$d downloads?</item>
+        <item quantity="other">Cancelar %1$d downloads?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">O que foi baixado até agora será excluído.</string>
+    <string name="downloads_cancel_selected_keep">Manter</string>
+    <string name="data_dir_unusable">O YMusic não consegue abrir sua pasta de dados, %1$s. Verifique se é uma pasta na qual você pode gravar e abra o YMusic novamente. (%2$s)</string>
 </resources>

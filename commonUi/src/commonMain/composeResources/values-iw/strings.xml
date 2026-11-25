@@ -23,6 +23,10 @@
     <string name="downloads_none_title">אין עדיין הורדות</string>
     <string name="downloads_none_message">שירים וסרטונים שהורדו מתנגנים ללא חיבור.</string>
     <string name="downloads_failed">ההורדה נכשלה</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">הצג ב-Finder</string>
+    <string name="menu_reveal_explorer">הצג בסייר הקבצים</string>
+    <string name="menu_reveal_file_manager">הצג במנהל הקבצים</string>
     <string name="section_settings">הגדרות</string>
     <string name="section_donate">תרומה</string>
     <string name="section_feedback">משוב</string>
@@ -121,8 +125,36 @@
     <string name="yt_playlist_removed_video">%1$s הוסר מרשימת ההשמעה</string>
     <string name="cd_add_to_playlist">הוסף לרשימת השמעה</string>
     <string name="cd_share">שיתוף</string>
-    <string name="cd_music_video">מוזיקה</string>
-    <string name="cd_album">אלבום</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">סרטון</string>
+    <string name="a11y_kind_music_video">קליפ</string>
+    <string name="a11y_kind_live">שידור חי</string>
+    <string name="a11y_kind_playlist">רשימת השמעה</string>
+    <string name="a11y_kind_album">אלבום</string>
+    <string name="a11y_kind_mix">מיקס</string>
+    <string name="a11y_kind_channel">ערוץ</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">שעה אחת</item>
+        <item quantity="two">שעתיים</item>
+        <item quantity="other">%1$d שעות</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">דקה אחת</item>
+        <item quantity="two">%1$d דקות</item>
+        <item quantity="other">%1$d דקות</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">שנייה אחת</item>
+        <item quantity="two">%1$d שניות</item>
+        <item quantity="other">%1$d שניות</item>
+    </plurals>
+    <string name="a11y_now_playing">מתנגן עכשיו</string>
+    <string name="a11y_playback_position">מיקום ההשמעה</string>
+    <string name="a11y_x_of_y">%1$s מתוך %2$s</string>
+    <string name="a11y_behind_live">%1$s מאחורי השידור החי</string>
+    <string name="a11y_downloaded">הורד</string>
+    <string name="a11y_eq_preamp">קדם-מגבר</string>
 
     <!-- Library -->
     <string name="library_tab_folders">תיקיות</string>
@@ -170,6 +202,12 @@
     <string name="menu_remove_from_playlist">הסר מרשימת ההשמעה</string>
     <string name="playlist_delete_title">למחוק את רשימת ההשמעה?</string>
     <string name="playlist_delete_message">“%1$s” תוסר. השירים יישארו בספרייה שלך.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">להסיר שיר אחד מרשימת ההשמעה?</item>
+        <item quantity="two">להסיר שני שירים מרשימת ההשמעה?</item>
+        <item quantity="other">להסיר %1$d שירים מרשימת ההשמעה?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">השירים יישארו בספרייה שלך.</string>
     <string name="add_to_playlist_new">רשימת השמעה חדשה…</string>
     <string name="playlist_recent_play">הושמעו לאחרונה</string>
     <string name="playlist_top_tracks">השירים המובילים</string>
@@ -227,7 +265,6 @@
     <string name="settings_debug">ניפוי באגים</string>
     <string name="settings_show_fps">הצג FPS</string>
     <string name="settings_show_fps_hint">הצגת מספר התמונות לשנייה מעל הסרטון במסך המתנגן כעת. המדידה נעצרת בהשהיה או כשיוצאים מהמסך.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">רישיונות קוד פתוח</string>
     <string name="settings_terms">תנאים ופרטיות</string>
     <string name="settings_licenses_intro">YMusic היא תוכנת קוד פתוח ברישיון GNU GPL v3.0. היא כוללת את הרכיבים הבאים:</string>
@@ -264,6 +301,10 @@
     <string name="cd_search">חיפוש</string>
     <string name="cd_back">חזרה</string>
     <string name="cd_clear">ניקוי</string>
+    <string name="cd_voice_search">חיפוש קולי</string>
+    <string name="voice_search_press_ok">יש ללחוץ על OK כדי לחפש בקול</string>
+    <string name="voice_search_listening">מאזין…</string>
+    <string name="voice_search_missed">לא הבנו. יש ללחוץ על OK כדי לנסות שוב</string>
     <string name="cd_close">סגירה</string>
     <string name="cd_more">עוד</string>
     <string name="cd_collapse">כיווץ</string>
@@ -273,10 +314,14 @@
     <string name="cd_download">הורדה</string>
     <string name="cd_fullscreen">מסך מלא</string>
     <string name="cd_exit_fullscreen">יציאה ממסך מלא</string>
+    <string name="cd_show_queue">הצגת התור</string>
+    <string name="cd_hide_queue">הסתרת התור</string>
     <string name="cd_fit_video">התאמת הסרטון</string>
     <string name="cd_fill_video">מילוי המסך</string>
-    <string name="cd_lock_rotation">נעילת סיבוב</string>
-    <string name="cd_unlock_rotation">ביטול נעילת סיבוב</string>
+    <string name="cd_screen_rotation">סיבוב מסך</string>
+    <string name="rotation_lock_landscape">נעילה לרוחב</string>
+    <string name="rotation_lock_portrait">נעילה לאורך</string>
+    <string name="rotation_free">סיבוב חופשי</string>
     <string name="cd_rewind10">10 שניות אחורה</string>
     <string name="cd_forward10">10 שניות קדימה</string>
     <string name="cd_repeat_off">חזרה על השמעה: כבויה</string>
@@ -364,7 +409,6 @@
     <string name="account_sign_out">יציאה מהחשבון</string>
     <string name="account_switch">החלפת חשבון</string>
     <string name="switch_account_hint">בחר את החשבון הרצוי, ואז סגור את המסך הזה בחץ החזרה — האפליקציה תתרענן עם החשבון החדש.</string>
-    <string name="cd_account_avatar">תמונת החשבון</string>
     <string name="account_my_channel">הערוץ שלי</string>
     <string name="account_watch_history">היסטוריית צפייה</string>
     <string name="account_watch_later">צפייה בהמשך</string>
@@ -386,6 +430,8 @@
     <string name="settings_audio_focus_apps">השהיה כשאפליקציות אחרות משמיעות צליל</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">דילוג אוטומטי על קטעי חסות בסרטוני YouTube. ניתן לכבות לסרטון מסוים מהמסך המתנגן כעת.</string>
+    <string name="settings_stable_volume">עוצמת קול יציבה</string>
+    <string name="settings_stable_volume_hint">מאזן בין קטעים רועשים ושקטים ומנגן כל שיר בעוצמה דומה.</string>
     <string name="sponsor_block_included">SponsorBlock הופעל לסרטון הזה</string>
     <string name="sponsor_block_excluded">SponsorBlock הושבת לסרטון הזה</string>
     <string name="settings_sound">צליל</string>
@@ -430,11 +476,9 @@
     <string name="download_more_qualities">+%1$d נוספות</string>
     <string name="download_down_to">עד %1$s</string>
     <string name="download_less">פחות</string>
-    <string name="download_webm_detail">WebM · הזרם המקורי</string>
+    <string name="download_webm_detail">Opus · הזרם המקורי</string>
     <string name="download_m4a_detail">AAC · הזרם המקורי</string>
-    <string name="download_mp3_detail">%1$d kbps · מתנגן בכל מקום</string>
-    <string name="settings_mp3_source_bitrate">הורדת MP3 בקצב הסיביות המקורי</string>
-    <string name="settings_mp3_source_bitrate_hint">קידוד MP3 בכ-256 kbps (קצב סיביות משתנה) במקום 320 kbps. קבצים קטנים יותר, אותה איכות.</string>
+    <string name="download_mp3_detail">מתנגן בכל מקום</string>
     <string name="download_audio_track">רצועת אודיו</string>
     <string name="download_captions">כתוביות</string>
     <string name="download_captions_off">כבוי</string>
@@ -461,7 +505,7 @@
     <string name="download_no_subtitles">אין זמינות</string>
     <string name="dialog_ok_done">סיום</string>
     <string name="download_captions_as_lyrics">%1$s · כמילות שיר</string>
-    <string name="download_lyrics_note">MP3 שומר את הכתוביות כמילות שיר, שמוצגות בנגנים שקוראים מילים.</string>
+    <string name="download_lyrics_note">פורמט זה שומר את הכתוביות כמילות שיר, שמוצגות בנגנים שקוראים מילים.</string>
     <string name="download_caption_translated">%1$s (תורגם אוטומטית)</string>
     <string name="download_live_unsupported">לא ניתן להוריד סרטון בשידור חי</string>
     <string name="download_save_quick">שמור כהורדה מהירה</string>
@@ -510,6 +554,13 @@
     <string name="dialog_ok">אישור</string>
     <string name="folder_picker_disabled">אפליקציית הקבצים של המערכת כבויה. יש להפעיל אותה כדי לבחור תיקייה.</string>
     <string name="folder_picker_open_settings">פתיחת ההגדרות</string>
+    <string name="folder_picker_title">בחירת תיקיית מוזיקה</string>
+    <string name="folder_picker_use_folder">שימוש בתיקייה הזו</string>
+    <string name="folder_picker_empty">אין כאן תיקיות</string>
+    <string name="folder_picker_storage_denied">כדי לבחור תיקייה, יש לאפשר בהגדרות גישה לקובצי המוזיקה.</string>
+    <string name="folder_picker_companion_message">אין במכשיר הזה בורר תיקיות. כדי לבחור תיקיות, יש להוריד ולהתקין מהקישור הזה את YMusic Files, אפליקציית עזר קטנה ל-YMusic, ולנסות שוב.</string>
+    <string name="folder_picker_companion_update">צריך לעדכן את YMusic Files כדי שיעבוד עם הגרסה הזו של YMusic. יש להוריד ולהתקין את הגרסה העדכנית מהקישור הזה ולנסות שוב.</string>
+    <string name="folder_picker_companion_open">פתיחת הקישור</string>
     <string name="folder_picker_missing">אין במכשיר הזה בורר תיקיות, ולכן אי אפשר לבחור תיקייה.</string>
     <string name="error_supervised_account">חשבון Google זה נמצא בפיקוח, ולכן לא ניתן להשתמש כאן ב-YouTube. צא מהחשבון או עבור לחשבון אחר.</string>
     <string name="settings_player_cache">מטמון הנגן</string>
@@ -556,6 +607,24 @@
     <string name="video_details_delete_title">מחיקת תגובה</string>
     <string name="video_details_delete_message">למחוק לצמיתות את התגובה שלך ואת כל התשובות לה?</string>
     <string name="video_details_deleted">התגובה נמחקה</string>
+    <string name="cookie_protect_title">להגן על הכניסה באמצעות סיסמה?</string>
+    <string name="cookie_protect_body">הכניסה שלך שמורה במחשב הזה, ואפליקציות אחרות שאתה מפעיל יכולות לקרוא אותה. הגדר סיסמה כדי לנעול אותה; YMusic יבקש אותה בכל הפעלה.</string>
+    <string name="cookie_password">סיסמה</string>
+    <string name="cookie_protect_confirm">אימות סיסמה</string>
+    <string name="cookie_protect_mismatch">הסיסמאות אינן תואמות.</string>
+    <string name="cookie_protect_submit">הגנה</string>
+    <string name="cookie_protect_skip">לא עכשיו</string>
+    <string name="cookie_unlock_title">ביטול נעילת הכניסה</string>
+    <string name="cookie_unlock_body">הכניסה שלך ל-YouTube מוגנת בסיסמה.</string>
+    <string name="cookie_unlock_submit">ביטול נעילה</string>
+    <string name="cookie_unlock_wrong">סיסמה שגויה.</string>
+    <string name="cookie_unlock_cant_unlock">לא מצליחים לבטל את הנעילה?</string>
+    <string name="cookie_unlock_guest">המשך כאורח</string>
+    <string name="cookie_unlock_guest_hint">פתיחה ללא כניסה לחשבון. שום דבר לא נשמר.</string>
+    <string name="cookie_unlock_sign_out">יציאה מהחשבון</string>
+    <string name="cookie_unlock_sign_out_hint">הסרת הכניסה השמורה הזו.</string>
+    <string name="cookie_unlock_sign_out_title">לצאת מהחשבון?</string>
+    <string name="cookie_unlock_sign_out_body">הפעולה תסיר את הכניסה השמורה מהמחשב הזה. כדי להיכנס שוב, סרוק את קוד ה-QR באפליקציית YMusic.</string>
     <string name="menu_details_comments">פרטים ותגובות</string>
     <string name="menu_search_lyrics">חיפוש מילות השיר</string>
     <string name="menu_speed_pitch">מהירות וגובה צליל</string>
@@ -575,4 +644,70 @@
     <string name="download_other_format">הורדה בפורמט אחר</string>
     <string name="unsubscribe">ביטול הרשמה</string>
     <string name="unsubscribed">ההרשמה בוטלה</string>
+    <string name="tray_pause">השהיה</string>
+    <string name="tray_resume">המשך</string>
+    <string name="tray_stop">עצירה (ניקוי התור)</string>
+    <string name="tray_quit">סגירה</string>
+    <string name="shortcuts_title">מקשי קיצור</string>
+    <string name="shortcuts_play_pause">השמעה / השהיה</string>
+    <string name="shortcuts_now_playing">הצגה או הסתרה של המסך המתנגן כעת</string>
+    <string name="shortcuts_nav_menu">פתיחה או סגירה של התפריט</string>
+    <string name="shortcuts_switch_tabs">מעבר בין כרטיסיות</string>
+    <string name="shortcuts_escape">יציאה ממסך מלא, או סגירת המסך המתנגן כעת, התפריט או חלון קופץ</string>
+    <string name="shortcuts_help">הצגת העזרה הזו</string>
+    <string name="shortcuts_volume_up">הגברת עוצמת הקול</string>
+    <string name="shortcuts_volume_down">הנמכת עוצמת הקול</string>
+    <string name="a11y_key_arrow_left">חץ שמאלה</string>
+    <string name="a11y_key_arrow_right">חץ ימינה</string>
+    <string name="a11y_key_arrow_up">חץ למעלה</string>
+    <string name="a11y_key_arrow_down">חץ למטה</string>
+    <string name="cd_always_on_top">תמיד למעלה</string>
+    <string name="settings_caption_size">גודל</string>
+    <string name="caption_size_preview">כך ייראו הכתוביות</string>
+    <string name="settings_caption_style">סגנון כתוביות</string>
+    <string name="settings_caption_style_hint">גודל, צבע ורקע של כתוביות הווידאו</string>
+    <string name="caption_text_color">צבע הטקסט</string>
+    <string name="caption_background">רקע</string>
+    <string name="caption_background_opacity">אטימות הרקע</string>
+    <string name="download_quality_save">חיסכון</string>
+    <string name="download_quality_medium">בינונית</string>
+    <string name="download_quality_best">הטובה ביותר</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows חסמה חלק מ-YMusic.</string>
+    <string name="media_engine_unavailable">לא ניתן להשמיע כאן מוזיקה וסרטונים, אבל עדיין אפשר לעיין ולחפש.</string>
+    <string name="native_blocked_help">במחשב של העבודה או בית הספר, בקש ממנהל המערכת לאפשר את YMusic. במחשב שלך, בדוק את Smart App Control באבטחת Windows.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">מרענן</string>
+    <string name="a11y_loading">בטעינה</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">בחירת הכול</string>
+    <string name="downloads_action_select">בחירה</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">נבחרו: %1$d</item>
+        <item quantity="two">נבחרו: %1$d</item>
+        <item quantity="other">נבחרו: %1$d</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">להסיר הורדה אחת מהרשימה?</item>
+        <item quantity="two">להסיר שתי הורדות מהרשימה?</item>
+        <item quantity="other">להסיר %1$d הורדות מהרשימה?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">קבצים שהושלמו יישארו במכשיר הזה.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">למחוק קובץ אחד?</item>
+        <item quantity="two">למחוק שני קבצים?</item>
+        <item quantity="other">למחוק %1$d קבצים?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">אי אפשר לשחזר קבצים שנמחקו.</string>
+    <string name="downloads_cancel_selected">ביטול ההורדות</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">לבטל הורדה אחת?</item>
+        <item quantity="two">לבטל שתי הורדות?</item>
+        <item quantity="other">לבטל %1$d הורדות?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">מה שהורד עד עכשיו יימחק.</string>
+    <string name="downloads_cancel_selected_keep">להשאיר</string>
+    <string name="data_dir_unusable">YMusic לא יכולה לפתוח את תיקיית הנתונים שלה, %1$s. ודא שזו תיקייה שאפשר לכתוב בה, ואז פתח שוב את YMusic. (%2$s)</string>
 </resources>

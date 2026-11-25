@@ -24,6 +24,9 @@ import io.ymusic.imageloader.DiskScaledImageCache
 import io.ymusic.imageloader.ImageLoader
 import io.ymusic.imageloader.fileFetcher
 import io.ymusic.imageloader.networkFetcher
+import io.ymusic.logstore.DbLogger
+import io.ymusic.logstore.LogStore
+import io.ymusic.logstore.nativeLogDatabaseDriver
 import io.ymusic.mse.MseVideoSurface
 import io.ymusic.player.LocalPlayerContext
 import io.ymusic.player.PlayerEngines
@@ -48,6 +51,7 @@ import io.ymusic.ui.playhistory.playHistoryNativeDriver
 import io.ymusic.ui.sponsorblock.SqliteSponsorBlockStore
 import io.ymusic.ui.sponsorblock.sponsorBlockNativeDriver
 import io.ymusic.ui.startupFailedMessage
+import io.ymusic.ytmedia.YOUTUBE_USER_AGENT
 import io.ymusic.ytmedia.cache.DiskMediaBlobCache
 import io.ymusic.ytmedia.cache.MediaCache
 import io.ymusic.ytmedia.cache.SqlDelightBlobIndex
@@ -65,6 +69,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import platform.Foundation.NSApplicationSupportDirectory
@@ -77,8 +82,6 @@ import platform.Foundation.timeIntervalSince1970
 import platform.UIKit.UIDevice
 import platform.UIKit.UIView
 import platform.UIKit.UIViewController
-import projectcommon.log.FileLogger
-import projectcommon.log.LoggingWorker
 
 /**
  * The iOS entry point — the Swift app hosts `MainViewControllerKt.MainViewController()`. Builds the
@@ -140,8 +143,12 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
     val logDir = (NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String)
         .toPath()
         .resolve("ymusic-logs")
-    val logWorker = LoggingWorker(logDir)
-    val rootLogger = TeeLogger(FileLogger(logWorker), IosLogger()).also { it.bindMseNativeLogs() }
+    // The log moved to logs.db: the text log files of older builds go.
+    FileSystem.SYSTEM.listOrNull(logDir)?.filter { it.name.startsWith("ymusic.log") }?.forEach { FileSystem.SYSTEM.delete(it) }
+    val logStore = LogStore(nativeLogDatabaseDriver())
+    // The app log, and the console in debug builds only.
+    val rootLogger = (if (DEBUG_BUILD) TeeLogger(DbLogger(logStore), IosLogger()) else DbLogger(logStore))
+        .also { it.bindMseNativeLogs() }
     val cookies = IosWebViewCookieJar()
     val http = AppHttpClients(
         (NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String)
@@ -149,7 +156,7 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
             .resolve("ymusic-http-cache"),
         logger = rootLogger,
     )
-    val settings = IosSettingsStore()
+    val settings = IosSettingsStore.settingsStore
     // First launch decides the app language (device if supported, else English) and persists it —
     // BEFORE the engine starts, because the engine pulls the same key as its content-language (hl).
     ensureAppLanguage(settings)
@@ -161,33 +168,6 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
     )
     val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val appVersionCode = (NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleVersion") as? String)?.toIntOrNull() ?: -1
-    val engines = DynamicEngineManager(
-        http.engine,
-        appVersion = appVersionCode,
-        jsSource = embeddedEngineJsSource(),
-        logger = rootLogger,
-        cookieJar = cookies,
-        settings = settings,
-        cacheStore = cacheStore,
-        strictStints = DEBUG_BUILD,
-        onBackendVersion = { version ->
-            runningBundles.engine = version
-            backgroundScope.launch { settings.put(AppSettings.lastLoadedEngineJsVer, version) }
-        },
-    )
-    engines.start()
-
-    val cacheRoot = (NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String)
-        .toPath()
-        .resolve("ymusic-images")
-    val imageLoader = ImageLoader(
-        fetchers = listOf(
-            networkFetcher(http.image, FileSystem.SYSTEM, cacheRoot.resolve("source")),
-            fileFetcher(),
-        ),
-        scaledCache = DiskScaledImageCache(FileSystem.SYSTEM, cacheRoot.resolve("scaled")),
-    )
-
     // The one client of the YMusic service; null when this build has no service url. Versions come
     // from Info.plist, the same values the App Store sees.
     val now = { (NSDate().timeIntervalSince1970 * 1000).toLong() }
@@ -222,6 +202,42 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
         now = now,
         log = rootLogger.fork("remote-config"),
     ).also { it.checkUpdate() }
+    val remoteFeature: suspend (String) -> JsonElement? = { key ->
+        remoteConfig.awaitLoaded().features.getByKey(key)
+    }
+    val engines = DynamicEngineManager(
+        http.engine,
+        appVersion = appVersionCode,
+        jsSource = embeddedEngineJsSource(),
+        logger = rootLogger,
+        cookieJar = cookies,
+        settings = settings,
+        remoteFeature = remoteFeature,
+        cacheStore = cacheStore,
+        strictStints = DEBUG_BUILD,
+        onBackendVersion = { version ->
+            runningBundles.engine = version
+            backgroundScope.launch { settings.put(AppSettings.lastLoadedEngineJsVer, version) }
+        },
+    )
+    engines.start()
+
+    val cacheRoot = (NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, true).first() as String)
+        .toPath()
+        .resolve("ymusic-images")
+    val imageLoader = ImageLoader(
+        fetchers = listOf(
+            networkFetcher(http.image, FileSystem.SYSTEM, cacheRoot.resolve("source")),
+            fileFetcher(),
+        ),
+        scaledCache = DiskScaledImageCache(FileSystem.SYSTEM, cacheRoot.resolve("scaled")),
+    )
+
+    backgroundScope.launch {
+        // The cap waits for the loaded config: the store trims nothing until it has one.
+        remoteConfig.awaitLoaded()
+        remoteConfig.features.collect { logStore.setMaxLines(it.logLines) }
+    }
     // Anonymous usage stats, gated per event by the "Send anonymous stats" setting.
     val stats = StatUsage(
         api = api,
@@ -250,6 +266,7 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
             now = { (NSDate().timeIntervalSince1970 * 1000).toLong() },
         ),
         SqlDelightCacheStats(cacheDriver),
+        logger = rootLogger.fork("player-cache"),
     )
     val mediaProxy = LocalMediaProxy(
         cache = playerCache,
@@ -257,7 +274,8 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
             cookieJar = cookies
             defaultRedirectOptions = RedirectOptions(followRedirects = true, followSslRedirects = true)
         },
-        userAgent = MSE_CHROME_UA,
+        userAgent = YOUTUBE_USER_AGENT,
+        cacheEnabled = { remoteConfig.config.value.features.playerCacheEnabled },
     )
 
     val mseHole = IosMseHole()
@@ -269,6 +287,7 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
         cacheStore = cacheStore,
         cookieJar = cookies,
         settings = settings,
+        remoteFeature = remoteFeature,
         videoSurface = mseSurface,
         main = engines,
         mediaProxy = mediaProxy,
@@ -318,7 +337,3 @@ private suspend fun buildIosGraph(container: UIView): AppGraph {
     IosPipHost.mse = msePlayer
     return graph
 }
-
-private const val MSE_CHROME_UA =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"

@@ -22,6 +22,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import projectcommon.error.DISK_FULL_CODE
 import projectcommon.error.NETWORK_CODE
+import projectcommon.error.PLAYBACK_UNAVAILABLE_CODE
 import projectcommon.error.TechnicalException
 import projectcommon.error.codedError
 import projectcommon.error.errorCode
@@ -77,7 +78,11 @@ class DownloadService(
     private val playerGate = PlayerResponseGate()
 
     private val pipeline = DownloadPipeline(
-        SabrSpecResolver { videoId -> playerGate.run { resolver.resolve(videoId) } },
+        object : SabrSpecResolver {
+            override suspend fun resolve(videoId: String): ResolvedVideo = playerGate.run { resolver.resolve(videoId) }
+
+            override suspend fun remint(videoId: String): SpecRemint = playerGate.run { resolver.remint(videoId) }
+        },
         client, userAgent, ffmpeg, storage, mediaCache, segmentIndex, logger,
     )
 
@@ -123,10 +128,10 @@ class DownloadService(
     }
 
     /** What [videoId] can be downloaded as — the options dialog's input. */
-    suspend fun probe(videoId: String, mp3SourceBitrate: Boolean = false): DownloadOptions {
+    suspend fun probe(videoId: String): DownloadOptions {
         val fetch = playerResponse ?: throw TechnicalException("E70040", "download options: no player-response source")
         val json = playerGate.run { fetch(videoId) }
-        return withContext(Dispatchers.Default) { DownloadOptions.parse(json, ffmpegAvailable, mp3SourceBitrate) }
+        return withContext(Dispatchers.Default) { DownloadOptions.parse(json, ffmpegAvailable) }
     }
 
     fun enqueue(request: DownloadRequest): String {
@@ -144,7 +149,7 @@ class DownloadService(
             captions = request.captions,
             audioLanguage = request.audioLanguage,
             captionLanguage = request.captionLanguage,
-            mp3SourceBitrate = request.mp3SourceBitrate,
+            audioQuality = request.audioQuality,
             state = DownloadState.QUEUED,
             downloadedBytes = 0,
             totalBytes = 0,
@@ -232,7 +237,7 @@ class DownloadService(
     suspend fun relocate(id: String, fileUri: String) {
         val task = store.get(id)?.takeIf { it.state == DownloadState.COMPLETED } ?: return
         val bytes = task.totalBytes ?: task.downloadedBytes
-        store.updateCompleted(id, fileUri, bytes, now())
+        store.updateCompleted(id, fileUri, bytes, task.loudnessGainDb, now())
         _changes.emit(DownloadChange.Completed(id, fileUri, bytes))
     }
 
@@ -367,11 +372,9 @@ class DownloadService(
                 onDownloading = { updates.trySend { setState(task.id, DownloadState.DOWNLOADING) } },
                 onProcessing = { updates.trySend { setState(task.id, DownloadState.PROCESSING) } },
                 onProgress = { done, total -> updates.trySend { setProgress(task.id, done, total) } },
-                onFormatChanged = { format ->
-                    updates.trySend {
-                        store.updateFormat(task.id, format, now())
-                        _changes.emit(DownloadChange.FormatChanged(task.id, format))
-                    }
+                onStreams = { format, audio, video ->
+                    store.updateStreams(task.id, format, audio, video, now())
+                    if (format != task.format) _changes.emit(DownloadChange.FormatChanged(task.id, format))
                 },
             )
         } catch (c: CancellationException) {
@@ -388,6 +391,7 @@ class DownloadService(
                 code == DownloadFolderAccessException.CODE -> taskLog?.log(Logger.Level.WARN, "download folder not writable", e)
                 code == DISK_FULL_CODE -> taskLog?.log(Logger.Level.WARN, "download hit full storage", e)
                 code == NETWORK_CODE -> taskLog?.log(Logger.Level.WARN, "download hit a network failure", e)
+                code == PLAYBACK_UNAVAILABLE_CODE -> taskLog?.log(Logger.Level.WARN, "download needs the media library", e)
                 code == StillProcessingException.CODE -> taskLog?.log(Logger.Level.WARN, "download of a replay still processing", e)
                 else -> taskLog?.captureError(e, "download failed")
             }
@@ -398,7 +402,7 @@ class DownloadService(
         withContext(NonCancellable) {
             updates.close()
             writer.join()
-            store.updateCompleted(task.id, result.uri, result.bytes, now())
+            store.updateCompleted(task.id, result.uri, result.bytes, result.loudnessGainDb, now())
             _changes.emit(DownloadChange.Completed(task.id, result.uri, result.bytes))
             try {
                 store.get(task.id)?.let { onCompleted?.invoke(it, result) }

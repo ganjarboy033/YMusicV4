@@ -28,7 +28,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.ymusic.dynamicengine.yt.YtAccountInfo
 import io.ymusic.dynamicengine.yt.YtFeedItem
 import io.ymusic.ui.resources.Res
@@ -50,7 +50,6 @@ import io.ymusic.ui.resources.account_subscriptions
 import io.ymusic.ui.resources.account_switch
 import io.ymusic.ui.resources.account_watch_history
 import io.ymusic.ui.resources.account_watch_later
-import io.ymusic.ui.resources.cd_account_avatar
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -69,7 +68,7 @@ internal fun AccountLibraryScreen(
     onOpen: ((YtFeedItem) -> Unit)?,
     onDeeplink: ((link: String, title: String?) -> Unit)?,
 ) {
-    val feedState by session.pager.state.collectAsState()
+    val feedState by session.pager.state.collectAsStateWithLifecycle()
     if (feedState is Pager.State.Loading) {
         CenteredBox { CircularProgressIndicator() }
         return
@@ -113,7 +112,7 @@ private fun AccountLibraryHeader(
             add(NavTarget(Icons.Outlined.Subscriptions, stringResource(Res.string.account_subscriptions), "/feed/subscriptions", null))
         }
         BoxWithConstraints {
-            if (maxWidth >= 600.dp) {
+            if (railStableWidth(maxWidth) >= 600.dp) {
                 val chipScroll = rememberScrollState()
                 Row(
                     Modifier
@@ -155,7 +154,7 @@ private fun BoxScope.AccountAvatarFallback(name: String?) {
                 style = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = DesignColors.OnInk),
             )
         } else {
-            Icon(Icons.Filled.Person, stringResource(Res.string.cd_account_avatar), tint = DesignColors.OnInk)
+            Icon(Icons.Filled.Person, null, tint = DesignColors.OnInk)
         }
     }
 }
@@ -167,7 +166,7 @@ private fun AccountCard(account: YtAccountInfo, onSignOut: () -> Unit, onSwitchA
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        Box(Modifier.size(46.dp)) {
+        Box(Modifier.size(46.dp).a11ySilent()) {
             // The disc only backs the fallback: under the photo its AA edge bleeds through as a dark ring.
             val fallback: @Composable BoxScope.() -> Unit = { AccountAvatarFallback(account.name) }
             if (account.thumbs.isNotEmpty()) ThumbImage(account.thumbs, CircleShape, fallback) else fallback()
@@ -197,6 +196,7 @@ private fun AccountCard(account: YtAccountInfo, onSignOut: () -> Unit, onSwitchA
                     add(stringResource(Res.string.account_sign_out) to onSignOut)
                 },
             ),
+            inFocusableItem = false,
         )
     }
 }

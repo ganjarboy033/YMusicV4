@@ -4,8 +4,8 @@
 //
 //   node update-config.mjs <release dir> <owner/repo> <tag> <YMusicV4 checkout> [notes dir]
 //
-// The notes dir holds one update-dialog text per platform family: notes-android.txt, notes-macos.txt
-// (a missing file = no notes for that family).
+// The notes dir holds one update-dialog text per platform family: notes-android.txt, notes-macos.txt,
+// notes-windows.txt, notes-linux.txt (a missing file = no notes for that family).
 //
 // Urls are the release's asset download links, live once the draft is published. Signatures use
 // bundle.signing.private.key (JS bundles) and update.private.key (installers) from the checkout's
@@ -33,8 +33,7 @@ const match = (path, regex, what) => {
 }
 
 const versionName = match('gradle.properties', /^ymusic\.versionName=(.+)$/m, 'ymusic.versionName').trim()
-const androidVersionCode = Number(match('androidApp/build.gradle.kts', /^\s*versionCode = (\d+)/m, 'versionCode'))
-const desktopVersionCode = Number(match('desktopApp/build.gradle.kts', /^val desktopVersionCode = (\d+)/m, 'desktopVersionCode'))
+const versionCode = Number(match('gradle.properties', /^ymusic\.versionCode=(\d+)\s*$/m, 'ymusic.versionCode'))
 const engineVersion = Number(match('buildSrc/src/main/kotlin/Dependencies.kt', /const val engineJsVersion = (\d+)L/, 'engineJsVersion'))
 const playerVersion = Number(match('buildSrc/src/main/kotlin/Dependencies.kt', /const val playerJsVersion = (\d+)L/, 'playerJsVersion'))
 
@@ -89,27 +88,43 @@ const sha256Of = async (path) => {
 }
 
 const INSTALLERS = [
-  { platform: 'android-armeabi-v7a', file: 'android-armv7.apk', versionCode: androidVersionCode },
-  { platform: 'android-arm64-v8a', file: 'android-arm64.apk', versionCode: androidVersionCode },
-  { platform: 'android-x86', file: 'android-x86.apk', versionCode: androidVersionCode },
-  { platform: 'android-x86_64', file: 'android-x86_64.apk', versionCode: androidVersionCode },
-  { platform: 'macos-arm64', file: 'macos-arm64.dmg', versionCode: desktopVersionCode },
-  { platform: 'macos-x64', file: 'macos-intel.dmg', versionCode: desktopVersionCode },
+  { platform: 'android-armeabi-v7a', file: 'android-armv7.apk', versionCode },
+  { platform: 'android-arm64-v8a', file: 'android-arm64.apk', versionCode },
+  { platform: 'android-x86', file: 'android-x86.apk', versionCode },
+  { platform: 'android-x86_64', file: 'android-x86_64.apk', versionCode },
+  { platform: 'macos-arm64', file: 'macos-arm64.dmg', versionCode },
+  { platform: 'macos-x64', file: 'macos-intel.dmg', versionCode },
+  { platform: 'windows-x64', file: 'windows-x64-setup.exe', versionCode },
+  { platform: 'windows-arm64', file: 'windows-arm64-setup.exe', versionCode },
+  { platform: 'linux-x64', file: 'linux-x86_64.deb', versionCode },
+  { platform: 'linux-arm64', file: 'linux-arm64.deb', versionCode },
+  { platform: 'linux-x64-appimage', file: 'linux-x86_64.AppImage', versionCode },
+  { platform: 'linux-arm64-appimage', file: 'linux-arm64.AppImage', versionCode },
 ]
+
+// The oldest build per platform that can install a new one in place; older builds get the release
+// page instead. A self-update swaps the app under the running JVM (the .app on macOS, /opt via apt on
+// Linux), which then spawns through the new bundle's jspawnhelper; that refuses a different JDK.
+// Desktop builds before 18 launch that way (18 is the first with the FORK launch), so none of them
+// survives a runtime change.
+const MIN_VERSION = { 'macos-arm64': 18, 'macos-x64': 18, 'linux-x64': 18, 'linux-arm64': 18 }
+const releasePage = `https://github.com/${repo}/releases/tag/${tag}`
 
 const releases = {}
 for (const { platform, file, versionCode } of INSTALLERS) {
-  const path = join(dir, file)
+  const assetName = `YMusic-${versionName}-${file}`
+  const path = join(dir, assetName)
   const sha256 = await sha256Of(path)
   releases[platform] = {
     versionCode,
     versionName,
     notes: notesFor(platform),
-    url: assetUrl(file),
+    url: assetUrl(assetName),
     size: statSync(path).size,
     sha256,
     signature: signUpdate(`app-${platform}:${versionCode}:${sha256}`),
     changelogUrl,
+    ...(MIN_VERSION[platform] ? { minVersion: MIN_VERSION[platform], downloadPage: releasePage } : {}),
   }
 }
 

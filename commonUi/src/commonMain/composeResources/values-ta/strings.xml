@@ -23,6 +23,10 @@
     <string name="downloads_none_title">இதுவரை பதிவிறக்கங்கள் இல்லை</string>
     <string name="downloads_none_message">பதிவிறக்கிய பாடல்களும் வீடியோக்களும் ஆஃப்லைனில் இயங்கும்.</string>
     <string name="downloads_failed">பதிவிறக்கம் தோல்வியடைந்தது</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Finder-இல் காட்டு</string>
+    <string name="menu_reveal_explorer">கோப்பு எக்ஸ்ப்ளோரரில் காட்டு</string>
+    <string name="menu_reveal_file_manager">கோப்பு மேலாளரில் காட்டு</string>
     <string name="section_settings">அமைப்புகள்</string>
     <string name="section_donate">நன்கொடை அளி</string>
     <string name="section_feedback">கருத்து</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">பிளேலிஸ்ட்டிலிருந்து %1$s அகற்றப்பட்டது</string>
     <string name="cd_add_to_playlist">பிளேலிஸ்ட்டில் சேர்</string>
     <string name="cd_share">பகிர்</string>
-    <string name="cd_music_video">இசை</string>
-    <string name="cd_album">ஆல்பம்</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">வீடியோ</string>
+    <string name="a11y_kind_music_video">இசை வீடியோ</string>
+    <string name="a11y_kind_live">நேரலை வீடியோ</string>
+    <string name="a11y_kind_playlist">பிளேலிஸ்ட்</string>
+    <string name="a11y_kind_album">ஆல்பம்</string>
+    <string name="a11y_kind_mix">கலவை</string>
+    <string name="a11y_kind_channel">சேனல்</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d மணிநேரம்</item>
+        <item quantity="other">%1$d மணிநேரம்</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d நிமிடம்</item>
+        <item quantity="other">%1$d நிமிடங்கள்</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d வினாடி</item>
+        <item quantity="other">%1$d வினாடிகள்</item>
+    </plurals>
+    <string name="a11y_now_playing">இப்போது இயங்குகிறது</string>
+    <string name="a11y_playback_position">இயக்க நிலை</string>
+    <string name="a11y_x_of_y">%2$s இல் %1$s</string>
+    <string name="a11y_behind_live">நேரலையை விட %1$s பின்னால்</string>
+    <string name="a11y_downloaded">பதிவிறக்கப்பட்டது</string>
+    <string name="a11y_eq_preamp">முன்பெருக்கி</string>
 
     <!-- Library -->
     <string name="library_tab_folders">கோப்புறைகள்</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">பிளேலிஸ்ட்டிலிருந்து அகற்று</string>
     <string name="playlist_delete_title">பிளேலிஸ்ட்டை நீக்கவா?</string>
     <string name="playlist_delete_message">“%1$s” அகற்றப்படும். பாடல்கள் உங்கள் லைப்ரரியில் இருக்கும்.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">பிளேலிஸ்ட்டிலிருந்து %1$d பாடலை அகற்றவா?</item>
+        <item quantity="other">பிளேலிஸ்ட்டிலிருந்து %1$d பாடல்களை அகற்றவா?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">பாடல்கள் உங்கள் லைப்ரரியில் இருக்கும்.</string>
     <string name="add_to_playlist_new">புதிய பிளேலிஸ்ட்…</string>
     <string name="playlist_recent_play">சமீபத்திய இயக்கம்</string>
     <string name="playlist_top_tracks">சிறந்த பாடல்கள்</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">பிழைத்திருத்தம்</string>
     <string name="settings_show_fps">FPS காட்டு</string>
     <string name="settings_show_fps_hint">Now Playing வீடியோவின் மேல் ஒரு வினாடிக்கான படங்களைக் காட்டு. இடைநிறுத்தும்போதோ அந்தத் திரையை விட்டு வெளியேறும்போதோ அளவிடல் நிற்கும்.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">ஓப்பன் சோர்ஸ் உரிமங்கள்</string>
     <string name="settings_terms">விதிமுறைகள் &amp; தனியுரிமை</string>
     <string name="settings_licenses_intro">YMusic GNU GPL v3.0 இன் கீழ் ஓப்பன் சோர்ஸ் ஆகும். இதில் இந்தக் கூறுகள் அடங்கும்:</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">தேடு</string>
     <string name="cd_back">பின்செல்</string>
     <string name="cd_clear">அழி</string>
+    <string name="cd_voice_search">குரல் மூலம் தேடு</string>
+    <string name="voice_search_press_ok">குரல் மூலம் தேட OK அழுத்தவும்</string>
+    <string name="voice_search_listening">கேட்கிறது…</string>
+    <string name="voice_search_missed">புரியவில்லை. மீண்டும் முயல OK அழுத்தவும்</string>
     <string name="cd_close">மூடு</string>
     <string name="cd_more">மேலும்</string>
     <string name="cd_collapse">சுருக்கு</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">பதிவிறக்கு</string>
     <string name="cd_fullscreen">முழுத்திரை</string>
     <string name="cd_exit_fullscreen">முழுத்திரையிலிருந்து வெளியேறு</string>
+    <string name="cd_show_queue">வரிசையைக் காட்டு</string>
+    <string name="cd_hide_queue">வரிசையை மறை</string>
     <string name="cd_fit_video">வீடியோவைப் பொருத்து</string>
     <string name="cd_fill_video">திரையை நிரப்பு</string>
-    <string name="cd_lock_rotation">சுழற்சியைப் பூட்டு</string>
-    <string name="cd_unlock_rotation">சுழற்சியைத் திற</string>
+    <string name="cd_screen_rotation">திரைச் சுழற்சி</string>
+    <string name="rotation_lock_landscape">கிடைமட்டமாகப் பூட்டு</string>
+    <string name="rotation_lock_portrait">செங்குத்தாகப் பூட்டு</string>
+    <string name="rotation_free">தடையற்ற சுழற்சி</string>
     <string name="cd_rewind10">10 வினாடிகள் பின்னோக்கி</string>
     <string name="cd_forward10">10 வினாடிகள் முன்னோக்கி</string>
     <string name="cd_repeat_off">மீண்டும் இயக்கு: முடக்கம்</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">வெளியேறு</string>
     <string name="account_switch">கணக்கை மாற்று</string>
     <string name="switch_account_hint">உங்களுக்கு வேண்டிய கணக்கைத் தேர்ந்தெடுத்து, பின் அம்புக்குறியால் இந்தத் திரையை மூடவும் — ஆப்ஸ் புதிய கணக்கில் புதுப்பிக்கப்படும்.</string>
-    <string name="cd_account_avatar">கணக்குப் படம்</string>
     <string name="account_my_channel">எனது சேனல்</string>
     <string name="account_watch_history">பார்த்த வரலாறு</string>
     <string name="account_watch_later">பின்னர் பார்</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">பிற ஆப்ஸ் ஒலி இயக்கும்போது இடைநிறுத்து</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">YouTube வீடியோக்களில் ஸ்பான்சர் பகுதிகளைத் தானாகத் தவிர்க்கவும். Now Playing இலிருந்து ஒரு வீடியோவுக்கு முடக்கலாம்.</string>
+    <string name="settings_stable_volume">நிலையான ஒலியளவு</string>
+    <string name="settings_stable_volume_hint">உரத்த மற்றும் மென்மையான பகுதிகளைச் சமன்செய்து ஒவ்வொரு பாடலையும் ஏறக்குறைய ஒரே ஒலியளவில் இயக்கும்.</string>
     <string name="sponsor_block_included">இந்த வீடியோவுக்கு SponsorBlock இயக்கப்பட்டது</string>
     <string name="sponsor_block_excluded">இந்த வீடியோவுக்கு SponsorBlock முடக்கப்பட்டது</string>
     <string name="settings_sound">ஒலி</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d மேலும்</string>
     <string name="download_down_to">%1$s வரை</string>
     <string name="download_less">குறைவு</string>
-    <string name="download_webm_detail">WebM · அசல் ஸ்ட்ரீம்</string>
+    <string name="download_webm_detail">Opus · அசல் ஸ்ட்ரீம்</string>
     <string name="download_m4a_detail">AAC · அசல் ஸ்ட்ரீம்</string>
-    <string name="download_mp3_detail">%1$d kbps · எங்கும் இயங்கும்</string>
-    <string name="settings_mp3_source_bitrate">அசல் பிட்ரேட்டில் MP3 பதிவிறக்கு</string>
-    <string name="settings_mp3_source_bitrate_hint">320 kbps-க்கு பதிலாக சுமார் 256 kbps-ல் (மாறும் பிட்ரேட்) MP3-ஐ குறியாக்கு. சிறிய கோப்புகள், அதே தரம்.</string>
+    <string name="download_mp3_detail">எங்கும் இயங்கும்</string>
     <string name="download_audio_track">ஆடியோ டிராக்</string>
     <string name="download_captions">வசனங்கள்</string>
     <string name="download_captions_off">முடக்கம்</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">எதுவும் கிடைக்கவில்லை</string>
     <string name="dialog_ok_done">முடிந்தது</string>
     <string name="download_captions_as_lyrics">%1$s · பாடல் வரிகளாக</string>
-    <string name="download_lyrics_note">MP3 வசனங்களைப் பாடல் வரிகளாக வைத்திருக்கும், பாடல் வரிகளைப் படிக்கும் பிளேயர்களில் காட்டப்படும்.</string>
+    <string name="download_lyrics_note">இந்த வடிவம் வசனங்களைப் பாடல் வரிகளாக வைத்திருக்கும், பாடல் வரிகளைப் படிக்கும் பிளேயர்களில் காட்டப்படும்.</string>
     <string name="download_caption_translated">%1$s (தானாக மொழிபெயர்க்கப்பட்டது)</string>
     <string name="download_live_unsupported">நேரலை வீடியோவைப் பதிவிறக்க முடியாது</string>
     <string name="download_save_quick">விரைவுப் பதிவிறக்கமாகச் சேமி</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">சரி</string>
     <string name="folder_picker_disabled">சிஸ்டத்தின் Files ஆப்ஸ் முடக்கப்பட்டுள்ளது. கோப்புறையைத் தேர்வுசெய்ய அதை இயக்கவும்.</string>
     <string name="folder_picker_open_settings">அமைப்புகளைத் திற</string>
+    <string name="folder_picker_title">இசைக் கோப்புறையைத் தேர்வுசெய்யவும்</string>
+    <string name="folder_picker_use_folder">இந்தக் கோப்புறையைப் பயன்படுத்து</string>
+    <string name="folder_picker_empty">இங்கே கோப்புறைகள் இல்லை</string>
+    <string name="folder_picker_storage_denied">கோப்புறையைத் தேர்வுசெய்ய அமைப்புகளில் உங்கள் இசைக் கோப்புகளுக்கான அணுகலை அனுமதிக்கவும்.</string>
+    <string name="folder_picker_companion_message">இந்தச் சாதனத்தில் கோப்புறைத் தேர்வுக் கருவி இல்லை. கோப்புறைகளைத் தேர்வுசெய்ய இந்த இணைப்பிலிருந்து YMusic-க்கான சிறிய உதவி ஆப்ஸான YMusic Files-ஐப் பதிவிறக்கி நிறுவிய பின் மீண்டும் முயலவும்.</string>
+    <string name="folder_picker_companion_update">YMusic-இன் இந்தப் பதிப்புடன் இயங்க YMusic Files-ஐப் புதுப்பிக்க வேண்டும். இந்த இணைப்பிலிருந்து சமீபத்திய பதிப்பைப் பதிவிறக்கி நிறுவிய பின் மீண்டும் முயலவும்.</string>
+    <string name="folder_picker_companion_open">இணைப்பைத் திற</string>
     <string name="folder_picker_missing">இந்தச் சாதனத்தில் கோப்புறைத் தேர்வி இல்லை, எனவே கோப்புறையைத் தேர்வுசெய்ய முடியாது.</string>
     <string name="error_supervised_account">இந்த Google கணக்கு மேற்பார்வையில் உள்ளதால் இங்கே YouTube-ஐப் பயன்படுத்த முடியாது. வெளியேறவும் அல்லது வேறு கணக்கிற்கு மாறவும்.</string>
     <string name="settings_player_cache">பிளேயர் தற்காலிகச் சேமிப்பு</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">கருத்தை நீக்கு</string>
     <string name="video_details_delete_message">உங்கள் கருத்தையும் அதன் எல்லாப் பதில்களையும் நிரந்தரமாக நீக்கவா?</string>
     <string name="video_details_deleted">கருத்து நீக்கப்பட்டது</string>
+    <string name="cookie_protect_title">உங்கள் உள்நுழைவைக் கடவுச்சொல்லால் பாதுகாக்கவா?</string>
+    <string name="cookie_protect_body">உங்கள் உள்நுழைவு இந்தக் கணினியில் சேமிக்கப்பட்டுள்ளது, நீங்கள் இயக்கும் பிற ஆப்ஸ் அதைப் படிக்க முடியும். அதைப் பூட்ட ஒரு கடவுச்சொல்லை அமைக்கவும்; ஒவ்வொரு முறை தொடங்கும்போதும் YMusic அதைக் கேட்கும்.</string>
+    <string name="cookie_password">கடவுச்சொல்</string>
+    <string name="cookie_protect_confirm">கடவுச்சொல்லை உறுதிசெய்</string>
+    <string name="cookie_protect_mismatch">கடவுச்சொற்கள் பொருந்தவில்லை.</string>
+    <string name="cookie_protect_submit">பாதுகா</string>
+    <string name="cookie_protect_skip">இப்போது வேண்டாம்</string>
+    <string name="cookie_unlock_title">உங்கள் உள்நுழைவைத் திறக்கவும்</string>
+    <string name="cookie_unlock_body">உங்கள் YouTube உள்நுழைவு கடவுச்சொல்லால் பாதுகாக்கப்பட்டுள்ளது.</string>
+    <string name="cookie_unlock_submit">திற</string>
+    <string name="cookie_unlock_wrong">தவறான கடவுச்சொல்.</string>
+    <string name="cookie_unlock_cant_unlock">திறக்க முடியவில்லையா?</string>
+    <string name="cookie_unlock_guest">விருந்தினராகத் தொடர்</string>
+    <string name="cookie_unlock_guest_hint">உள்நுழையாமல் தொடங்கும். எதுவும் சேமிக்கப்படாது.</string>
+    <string name="cookie_unlock_sign_out">வெளியேறு</string>
+    <string name="cookie_unlock_sign_out_hint">சேமித்த இந்த உள்நுழைவை அகற்றும்.</string>
+    <string name="cookie_unlock_sign_out_title">வெளியேறவா?</string>
+    <string name="cookie_unlock_sign_out_body">இது சேமித்த உள்நுழைவை இந்தக் கணினியிலிருந்து அகற்றும். மீண்டும் உள்நுழைய, YMusic ஆப்ஸ் மூலம் QR குறியீட்டை ஸ்கேன் செய்யவும்.</string>
     <string name="menu_details_comments">விவரங்களும் கருத்துகளும்</string>
     <string name="menu_search_lyrics">பாடல் வரிகளைத் தேடு</string>
     <string name="menu_speed_pitch">வேகமும் சுருதியும்</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">வேறு வடிவத்தில் பதிவிறக்கு</string>
     <string name="unsubscribe">குழுவிலகு</string>
     <string name="unsubscribed">குழுவிலகப்பட்டது</string>
+    <string name="tray_pause">இடைநிறுத்து</string>
+    <string name="tray_resume">தொடர்</string>
+    <string name="tray_stop">நிறுத்து (வரிசையை அழி)</string>
+    <string name="tray_quit">மூடு</string>
+    <string name="shortcuts_title">விசைப்பலகைக் குறுக்குவழிகள்</string>
+    <string name="shortcuts_play_pause">இயக்கு / இடைநிறுத்து</string>
+    <string name="shortcuts_now_playing">Now Playing-ஐக் காட்டு அல்லது மறை</string>
+    <string name="shortcuts_nav_menu">மெனுவைத் திற அல்லது மூடு</string>
+    <string name="shortcuts_switch_tabs">தாவல்களை மாற்று</string>
+    <string name="shortcuts_escape">முழுத்திரையிலிருந்து வெளியேறு, அல்லது Now Playing, மெனு அல்லது பாப்-அப்பை மூடு</string>
+    <string name="shortcuts_help">இந்த உதவியைக் காட்டு</string>
+    <string name="shortcuts_volume_up">ஒலியை அதிகரி</string>
+    <string name="shortcuts_volume_down">ஒலியைக் குறை</string>
+    <string name="a11y_key_arrow_left">இடது அம்பு</string>
+    <string name="a11y_key_arrow_right">வலது அம்பு</string>
+    <string name="a11y_key_arrow_up">மேல் அம்பு</string>
+    <string name="a11y_key_arrow_down">கீழ் அம்பு</string>
+    <string name="cd_always_on_top">எப்போதும் மேலே</string>
+    <string name="settings_caption_size">அளவு</string>
+    <string name="caption_size_preview">தலைப்புகள் இப்படித் தோன்றும்</string>
+    <string name="settings_caption_style">தலைப்பு நடை</string>
+    <string name="settings_caption_style_hint">வீடியோ தலைப்புகளின் அளவு, நிறம், பின்னணி</string>
+    <string name="caption_text_color">உரையின் நிறம்</string>
+    <string name="caption_background">பின்னணி</string>
+    <string name="caption_background_opacity">பின்னணி ஒளிபுகாமை</string>
+    <string name="download_quality_save">சிக்கனம்</string>
+    <string name="download_quality_medium">நடுத்தரம்</string>
+    <string name="download_quality_best">சிறந்தது</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows, YMusic-இன் ஒரு பகுதியைத் தடுத்துள்ளது.</string>
+    <string name="media_engine_unavailable">இங்கே இசையையும் வீடியோக்களையும் இயக்க முடியாது, ஆனால் நீங்கள் தொடர்ந்து உலாவலாம், தேடலாம்.</string>
+    <string name="native_blocked_help">பணி அல்லது பள்ளி PC-யில், YMusic-ஐ அனுமதிக்க உங்கள் நிர்வாகியிடம் கேளுங்கள். உங்கள் சொந்த PC-யில், Windows Security-இல் Smart App Control-ஐச் சரிபார்க்கவும்.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">புதுப்பிக்கிறது</string>
+    <string name="a11y_loading">ஏற்றுகிறது</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">அனைத்தையும் தேர்ந்தெடு</string>
+    <string name="downloads_action_select">தேர்ந்தெடு</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d தேர்ந்தெடுக்கப்பட்டது</item>
+        <item quantity="other">%1$d தேர்ந்தெடுக்கப்பட்டன</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">பட்டியலிலிருந்து %1$d பதிவிறக்கத்தை அகற்றவா?</item>
+        <item quantity="other">பட்டியலிலிருந்து %1$d பதிவிறக்கங்களை அகற்றவா?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">முடிந்த கோப்புகள் இந்தச் சாதனத்திலேயே இருக்கும்.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">%1$d கோப்பை நீக்கவா?</item>
+        <item quantity="other">%1$d கோப்புகளை நீக்கவா?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">நீக்கிய கோப்புகளை மீட்டெடுக்க முடியாது.</string>
+    <string name="downloads_cancel_selected">பதிவிறக்கங்களை ரத்துசெய்</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">%1$d பதிவிறக்கத்தை ரத்துசெய்யவா?</item>
+        <item quantity="other">%1$d பதிவிறக்கங்களை ரத்துசெய்யவா?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">இதுவரை பதிவிறக்கியவை நீக்கப்படும்.</string>
+    <string name="downloads_cancel_selected_keep">வைத்திரு</string>
+    <string name="data_dir_unusable">YMusic அதன் தரவுக் கோப்புறையான %1$s ஐத் திறக்க முடியவில்லை. அது நீங்கள் எழுதக்கூடிய கோப்புறை என்பதை உறுதிசெய்து, பிறகு YMusic ஐ மீண்டும் திறக்கவும். (%2$s)</string>
 </resources>

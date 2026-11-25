@@ -23,6 +23,10 @@
     <string name="downloads_none_title">Nog geen aflaaie nie</string>
     <string name="downloads_none_message">Afgelaaide liedjies en video’s speel aflyn.</string>
     <string name="downloads_failed">Aflaai het misluk</string>
+    <!-- Shows a file or folder in the OS file manager; one label per desktop OS (Finder / File Explorer are product names). -->
+    <string name="menu_reveal_finder">Wys in Finder</string>
+    <string name="menu_reveal_explorer">Wys in Lêerverkenner</string>
+    <string name="menu_reveal_file_manager">Wys in lêerbestuurder</string>
     <string name="section_settings">Instellings</string>
     <string name="section_donate">Skenk</string>
     <string name="section_feedback">Terugvoer</string>
@@ -121,8 +125,33 @@
     <string name="yt_playlist_removed_video">%1$s uit die snitlys verwyder</string>
     <string name="cd_add_to_playlist">Voeg by snitlys</string>
     <string name="cd_share">Deel</string>
-    <string name="cd_music_video">Musiek</string>
-    <string name="cd_album">Album</string>
+    <!-- Screen-reader prefix naming what a feed card is: "Video, <title>, 5 minutes 3 seconds, <channel>" -->
+    <string name="a11y_kind_video">Video</string>
+    <string name="a11y_kind_music_video">Musiekvideo</string>
+    <string name="a11y_kind_live">Regstreekse video</string>
+    <string name="a11y_kind_playlist">Snitlys</string>
+    <string name="a11y_kind_album">Album</string>
+    <string name="a11y_kind_mix">Mix</string>
+    <string name="a11y_kind_channel">Kanaal</string>
+    <!-- A video's length as a screen reader speaks it, joined with spaces: "1 hour 5 minutes 3 seconds" -->
+    <plurals name="a11y_duration_hours">
+        <item quantity="one">%1$d uur</item>
+        <item quantity="other">%1$d uur</item>
+    </plurals>
+    <plurals name="a11y_duration_minutes">
+        <item quantity="one">%1$d minuut</item>
+        <item quantity="other">%1$d minute</item>
+    </plurals>
+    <plurals name="a11y_duration_seconds">
+        <item quantity="one">%1$d sekonde</item>
+        <item quantity="other">%1$d sekondes</item>
+    </plurals>
+    <string name="a11y_now_playing">Speel tans</string>
+    <string name="a11y_playback_position">Speelposisie</string>
+    <string name="a11y_x_of_y">%1$s van %2$s</string>
+    <string name="a11y_behind_live">%1$s agter regstreeks</string>
+    <string name="a11y_downloaded">Afgelaai</string>
+    <string name="a11y_eq_preamp">Voorversterker</string>
 
     <!-- Library -->
     <string name="library_tab_folders">Vouers</string>
@@ -170,6 +199,11 @@
     <string name="menu_remove_from_playlist">Verwyder uit snitlys</string>
     <string name="playlist_delete_title">Skrap snitlys?</string>
     <string name="playlist_delete_message">“%1$s” sal verwyder word. Die liedjies bly in jou biblioteek.</string>
+    <plurals name="playlist_remove_selected_title">
+        <item quantity="one">Verwyder %1$d liedjie uit snitlys?</item>
+        <item quantity="other">Verwyder %1$d liedjies uit snitlys?</item>
+    </plurals>
+    <string name="playlist_remove_selected_message">Die liedjies bly in jou biblioteek.</string>
     <string name="add_to_playlist_new">Nuwe snitlys…</string>
     <string name="playlist_recent_play">Onlangs gespeel</string>
     <string name="playlist_top_tracks">Topsnitte</string>
@@ -226,7 +260,6 @@
     <string name="settings_debug">Ontfouting</string>
     <string name="settings_show_fps">Wys FPS</string>
     <string name="settings_show_fps_hint">Wys rame per sekonde oor die Speel nou-video. Meting stop wanneer onderbreek of wanneer jy daardie skerm verlaat.</string>
-    <string name="overlay_fps">%1$d fps</string>
     <string name="settings_licenses">Oopbronlisensies</string>
     <string name="settings_terms">Bepalings &amp; privaatheid</string>
     <string name="settings_licenses_intro">YMusic is oopbron onder die GNU GPL v3.0. Dit sluit hierdie komponente in:</string>
@@ -263,6 +296,10 @@
     <string name="cd_search">Soek</string>
     <string name="cd_back">Terug</string>
     <string name="cd_clear">Vee uit</string>
+    <string name="cd_voice_search">Soek met stem</string>
+    <string name="voice_search_press_ok">Druk OK om met stem te soek</string>
+    <string name="voice_search_listening">Luister tans…</string>
+    <string name="voice_search_missed">Kon dit nie hoor nie. Druk OK om weer te probeer</string>
     <string name="cd_close">Maak toe</string>
     <string name="cd_more">Meer</string>
     <string name="cd_collapse">Vou in</string>
@@ -272,10 +309,14 @@
     <string name="cd_download">Laai af</string>
     <string name="cd_fullscreen">Volskerm</string>
     <string name="cd_exit_fullscreen">Verlaat volskerm</string>
+    <string name="cd_show_queue">Wys tou</string>
+    <string name="cd_hide_queue">Versteek tou</string>
     <string name="cd_fit_video">Pas video</string>
     <string name="cd_fill_video">Vul skerm</string>
-    <string name="cd_lock_rotation">Sluit rotasie</string>
-    <string name="cd_unlock_rotation">Ontsluit rotasie</string>
+    <string name="cd_screen_rotation">Skermrotasie</string>
+    <string name="rotation_lock_landscape">Sluit landskap</string>
+    <string name="rotation_lock_portrait">Sluit portret</string>
+    <string name="rotation_free">Vrye rotasie</string>
     <string name="cd_rewind10">Spoel 10 sekondes terug</string>
     <string name="cd_forward10">Spoel 10 sekondes vorentoe</string>
     <string name="cd_repeat_off">Herhaal: af</string>
@@ -363,7 +404,6 @@
     <string name="account_sign_out">Meld af</string>
     <string name="account_switch">Wissel rekening</string>
     <string name="switch_account_hint">Kies die rekening wat jy wil hê en maak dan hierdie skerm met die terugpyl toe — die app verfris onder die nuwe rekening.</string>
-    <string name="cd_account_avatar">Rekeningprent</string>
     <string name="account_my_channel">My kanaal</string>
     <string name="account_watch_history">Kykgeskiedenis</string>
     <string name="account_watch_later">Kyk later</string>
@@ -385,6 +425,8 @@
     <string name="settings_audio_focus_apps">Onderbreek wanneer ander programme klank speel</string>
     <string name="settings_sponsor_block">SponsorBlock</string>
     <string name="settings_sponsor_block_hint">Slaan geborgde gedeeltes in YouTube-video's outomaties oor. Skakel dit vir 'n video af vanuit Speel nou.</string>
+    <string name="settings_stable_volume">Stabiele volume</string>
+    <string name="settings_stable_volume_hint">Maak harde en sagte dele gelyker en speel elke liedjie teen ’n soortgelyke luidheid.</string>
     <string name="sponsor_block_included">SponsorBlock geaktiveer vir hierdie video</string>
     <string name="sponsor_block_excluded">SponsorBlock gedeaktiveer vir hierdie video</string>
     <string name="settings_sound">Klank</string>
@@ -429,11 +471,9 @@
     <string name="download_more_qualities">+%1$d meer</string>
     <string name="download_down_to">tot %1$s</string>
     <string name="download_less">Minder</string>
-    <string name="download_webm_detail">WebM · oorspronklike stroom</string>
+    <string name="download_webm_detail">Opus · oorspronklike stroom</string>
     <string name="download_m4a_detail">AAC · oorspronklike stroom</string>
-    <string name="download_mp3_detail">%1$d kbps · speel oral</string>
-    <string name="settings_mp3_source_bitrate">Laai MP3 af teen oorspronklike bistempo</string>
-    <string name="settings_mp3_source_bitrate_hint">Enkodeer MP3 teen ongeveer 256 kbps (veranderlike bistempo) in plaas van 320 kbps. Kleiner lêers, dieselfde kwaliteit.</string>
+    <string name="download_mp3_detail">Speel oral</string>
     <string name="download_audio_track">Oudiosnit</string>
     <string name="download_captions">Onderskrifte</string>
     <string name="download_captions_off">Af</string>
@@ -460,7 +500,7 @@
     <string name="download_no_subtitles">Geen beskikbaar nie</string>
     <string name="dialog_ok_done">Klaar</string>
     <string name="download_captions_as_lyrics">%1$s · as lirieke</string>
-    <string name="download_lyrics_note">MP3 hou onderskrifte as lirieke, wat gewys word deur spelers wat lirieke lees.</string>
+    <string name="download_lyrics_note">Hierdie formaat hou onderskrifte as lirieke, wat gewys word deur spelers wat lirieke lees.</string>
     <string name="download_caption_translated">%1$s (outomaties vertaal)</string>
     <string name="download_live_unsupported">Kan nie 'n REGSTREEKSE video aflaai nie</string>
     <string name="download_save_quick">Stoor as Vinnige aflaai</string>
@@ -505,6 +545,13 @@
     <string name="dialog_ok">OK</string>
     <string name="folder_picker_disabled">Die stelsel se Lêers-app is afgeskakel. Skakel dit aan om ’n vouer te kies.</string>
     <string name="folder_picker_open_settings">Maak instellings oop</string>
+    <string name="folder_picker_title">Kies ’n musiekvouer</string>
+    <string name="folder_picker_use_folder">Gebruik hierdie vouer</string>
+    <string name="folder_picker_empty">Geen vouers hier nie</string>
+    <string name="folder_picker_storage_denied">Gee in instellings toegang tot jou musieklêers om ’n vouer te kies.</string>
+    <string name="folder_picker_companion_message">Hierdie toestel het geen vouerkieser nie. Laai YMusic Files, ’n klein hulpprogram vir YMusic, van hierdie skakel af en installeer dit om vouers te kies, en probeer dan weer.</string>
+    <string name="folder_picker_companion_update">YMusic Files moet opgedateer word om met hierdie weergawe van YMusic te werk. Laai die nuutste weergawe van hierdie skakel af, installeer dit en probeer dan weer.</string>
+    <string name="folder_picker_companion_open">Maak skakel oop</string>
     <string name="folder_picker_missing">Hierdie toestel het nie ’n vouerkieser nie, so ’n vouer kan nie gekies word nie.</string>
     <string name="error_supervised_account">Hierdie Google-rekening word onder toesig gebruik, so YouTube kan nie hier gebruik word nie. Meld af of skakel oor na 'n ander rekening.</string>
     <string name="settings_player_cache">Spelerkas</string>
@@ -551,6 +598,24 @@
     <string name="video_details_delete_title">Skrap kommentaar</string>
     <string name="video_details_delete_message">Skrap jou kommentaar en al sy antwoorde permanent?</string>
     <string name="video_details_deleted">Kommentaar geskrap</string>
+    <string name="cookie_protect_title">Beskerm jou aanmelding met 'n wagwoord?</string>
+    <string name="cookie_protect_body">Jou aanmelding word op hierdie rekenaar gestoor, waar ander apps wat jy laat loop dit kan lees. Stel 'n wagwoord om dit te sluit; YMusic vra dit by elke opstart.</string>
+    <string name="cookie_password">Wagwoord</string>
+    <string name="cookie_protect_confirm">Bevestig wagwoord</string>
+    <string name="cookie_protect_mismatch">Die wagwoorde stem nie ooreen nie.</string>
+    <string name="cookie_protect_submit">Beskerm</string>
+    <string name="cookie_protect_skip">Nie nou nie</string>
+    <string name="cookie_unlock_title">Ontsluit jou aanmelding</string>
+    <string name="cookie_unlock_body">Jou YouTube-aanmelding is met 'n wagwoord beskerm.</string>
+    <string name="cookie_unlock_submit">Ontsluit</string>
+    <string name="cookie_unlock_wrong">Verkeerde wagwoord.</string>
+    <string name="cookie_unlock_cant_unlock">Kan jy nie ontsluit nie?</string>
+    <string name="cookie_unlock_guest">Gaan voort as gas</string>
+    <string name="cookie_unlock_guest_hint">Begin afgemeld. Niks word bewaar nie.</string>
+    <string name="cookie_unlock_sign_out">Meld af</string>
+    <string name="cookie_unlock_sign_out_hint">Verwyder hierdie gestoorde aanmelding.</string>
+    <string name="cookie_unlock_sign_out_title">Meld af?</string>
+    <string name="cookie_unlock_sign_out_body">Dit verwyder die gestoorde aanmelding van hierdie rekenaar. Skandeer die QR-kode met die YMusic-app om weer aan te meld.</string>
     <string name="menu_details_comments">Besonderhede en kommentaar</string>
     <string name="menu_search_lyrics">Soek lirieke</string>
     <string name="menu_speed_pitch">Spoed en toonhoogte</string>
@@ -570,4 +635,66 @@
     <string name="download_other_format">Laai in ’n ander formaat af</string>
     <string name="unsubscribe">Kanselleer intekening</string>
     <string name="unsubscribed">Intekening gekanselleer</string>
+    <string name="tray_pause">Pouseer</string>
+    <string name="tray_resume">Hervat</string>
+    <string name="tray_stop">Stop (vee tou uit)</string>
+    <string name="tray_quit">Sluit af</string>
+    <string name="shortcuts_title">Sleutelbordkortpaaie</string>
+    <string name="shortcuts_play_pause">Speel / pouseer</string>
+    <string name="shortcuts_now_playing">Wys of versteek Speel nou</string>
+    <string name="shortcuts_nav_menu">Maak die kieslys oop of toe</string>
+    <string name="shortcuts_switch_tabs">Wissel oortjies</string>
+    <string name="shortcuts_escape">Verlaat volskerm, of maak Speel nou, die kieslys of 'n opspringvenster toe</string>
+    <string name="shortcuts_help">Wys hierdie hulp</string>
+    <string name="shortcuts_volume_up">Volume harder</string>
+    <string name="shortcuts_volume_down">Volume sagter</string>
+    <string name="a11y_key_arrow_left">linkerpyltjie</string>
+    <string name="a11y_key_arrow_right">regterpyltjie</string>
+    <string name="a11y_key_arrow_up">oppyltjie</string>
+    <string name="a11y_key_arrow_down">afpyltjie</string>
+    <string name="cd_always_on_top">Altyd bo-op</string>
+    <string name="settings_caption_size">Grootte</string>
+    <string name="caption_size_preview">Onderskrifte sal so lyk</string>
+    <string name="settings_caption_style">Onderskrifstyl</string>
+    <string name="settings_caption_style_hint">Grootte, kleur en agtergrond van video-onderskrifte</string>
+    <string name="caption_text_color">Tekskleur</string>
+    <string name="caption_background">Agtergrond</string>
+    <string name="caption_background_opacity">Agtergrond-ondeursigtigheid</string>
+    <string name="download_quality_save">Spaar</string>
+    <string name="download_quality_medium">Medium</string>
+    <string name="download_quality_best">Beste</string>
+    <string name="download_kbps">%1$d kbps</string>
+
+    <!-- Windows refused a native library (desktop) -->
+    <string name="native_blocked">Windows het 'n deel van YMusic geblokkeer.</string>
+    <string name="media_engine_unavailable">Musiek en video's kan nie hier speel nie, maar jy kan steeds blaai en soek.</string>
+    <string name="native_blocked_help">Op 'n werk- of skoolrekenaar, vra jou administrateur om YMusic toe te laat. Op jou eie rekenaar, gaan Smart App Control in Windows Security na.</string>
+    <!-- A feed reloading in place (desktop) -->
+    <string name="a11y_refreshing">Verfris tans</string>
+    <string name="a11y_loading">Laai tans</string>
+    <!-- Download manager multi-select -->
+    <string name="select_all">Kies alles</string>
+    <string name="downloads_action_select">Kies</string>
+    <plurals name="downloads_selected_count">
+        <item quantity="one">%1$d gekies</item>
+        <item quantity="other">%1$d gekies</item>
+    </plurals>
+    <plurals name="downloads_remove_selected_title">
+        <item quantity="one">Verwyder %1$d aflaai van die lys?</item>
+        <item quantity="other">Verwyder %1$d aflaaie van die lys?</item>
+    </plurals>
+    <string name="downloads_remove_selected_message">Voltooide lêers bly op hierdie toestel.</string>
+    <plurals name="downloads_delete_selected_title">
+        <item quantity="one">Skrap %1$d lêer?</item>
+        <item quantity="other">Skrap %1$d lêers?</item>
+    </plurals>
+    <string name="downloads_delete_selected_message">Geskrapte lêers kan nie herstel word nie.</string>
+    <string name="downloads_cancel_selected">Kanselleer aflaaie</string>
+    <plurals name="downloads_cancel_selected_title">
+        <item quantity="one">Kanselleer %1$d aflaai?</item>
+        <item quantity="other">Kanselleer %1$d aflaaie?</item>
+    </plurals>
+    <string name="downloads_cancel_selected_message">Wat tot dusver afgelaai is, word geskrap.</string>
+    <string name="downloads_cancel_selected_keep">Hou</string>
+    <string name="data_dir_unusable">YMusic kan nie sy datavouer, %1$s, oopmaak nie. Maak seker dit is 'n vouer waarin jy kan skryf, en maak YMusic dan weer oop. (%2$s)</string>
 </resources>
