@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080b10" />
+  <meta name="description" content="Kruzen Spatial Audio — 8D Spatial Engine, EQ, efek audio, preset dan floating control." />
+  <title>Kruzen Spatial Audio</title>
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand-mark">K<span>◉</span></div>
+      <div class="brand-copy"><strong>KRUZEN <span>SPATIAL</span></strong><small>Audio Control Studio</small></div>
+      <div class="top-status"><i id="native-dot"></i><span id="native-label">Web Preview</span></div>
+    </header>
+
+    <main class="shell">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <div class="eyebrow">KRUZENLAB / BAGJA.DEV</div>
+          <h1>Spatial sound.<br><em>Beyond stereo.</em></h1>
+          <p>Atur pergerakan 8D, karakter audio, dan preset dalam satu studio.</p>
+          <div class="hero-actions">
+            <button class="btn-primary" id="master-toggle"><span class="power-icon">⏻</span><span id="master-label">DSP AKTIF</span></button>
+            <button class="btn-soft" data-tab="presets">Jelajahi preset ↗</button>
+          </div>
+        </div>
+        <div class="hero-orbit-wrap">
+          <div class="orbit-rings"><span class="orbit-dot"></span><span class="orbit-center">8D</span></div>
+          <div class="orbit-caption">SPATIAL ENGINE <b>01 / 08</b></div>
+        </div>
+      </section>
+
+      <nav class="tabbar" aria-label="Navigasi modul">
+        <button class="tab active" data-tab="spatial"><span>◌</span> 8D Spatial</button>
+        <button class="tab" data-tab="effects"><span>≋</span> Efek</button>
+        <button class="tab" data-tab="presets"><span>✦</span> Preset</button>
+        <button class="tab" data-tab="floating"><span>◉</span> Melayang</button>
+      </nav>
+
+      <section class="page active" id="page-spatial">
+        <div class="section-heading"><div><div class="eyebrow">SPATIAL POSITIONING</div><h2>Pergerakan 8D</h2></div><span class="pill pill-green" id="spatial-state">ENGINE ON</span></div>
+        <div class="grid-two spatial-grid">
+          <article class="panel position-panel">
+            <div class="panel-head"><div><h3>Orbit visualizer</h3><p>Posisi virtual suara mengelilingi pendengar</p></div><span class="live-dot">LIVE</span></div>
+            <canvas id="orbit-canvas" width="620" height="420" aria-label="Visualisasi jalur audio 8D"></canvas>
+            <div class="axis-labels"><span>◀ KIRI</span><span>DEPAN</span><span>KANAN ▶</span></div>
+            <div class="draw-tools"><button class="btn-soft" id="draw-path">Gambar jalur sendiri</button><button class="text-button" id="clear-path">Hapus jalur</button><small id="draw-hint">Pilih “Gambar jalur sendiri” lalu coret pada kanvas.</small></div>
+            <div class="position-readout"><div><small>POSISI X</small><b id="position-x">0.00</b></div><div><small>POSISI Z</small><b id="position-z">0.00</b></div><div><small>POLA</small><b id="position-path">360° Circle</b></div></div>
+          </article>
+          <article class="panel analyzer-panel">
+            <div class="panel-head"><div><h3>Audio spectrum</h3><p>Analyzer real-time · 24 bands</p></div><span class="pill">24 BAND</span></div>
+            <canvas id="spectrum-canvas" width="620" height="280" aria-label="Analyzer spektrum 24 band"></canvas>
+            <div class="spectrum-foot"><span>LOW</span><span>MID</span><span>HIGH</span></div>
+            <div class="analyzer-note" id="analyzer-note">Menunggu sinyal dari audio engine native.</div>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Pilih lintasan</h3><p>Pilih cara suara bergerak di ruang virtual</p></div></div>
+          <div class="path-grid" id="path-grid"></div>
+          <div class="control-grid" id="motion-controls"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Ruang & posisi</h3><p>Lebar stereo, jarak, dan titik pusat orbit</p></div><button class="text-button" id="reset-spatial">Reset</button></div>
+          <div class="control-grid" id="space-controls"></div>
+        </article>
+      </section>
+
+      <section class="page" id="page-effects">
+        <div class="section-heading"><div><div class="eyebrow">SOUND SHAPING</div><h2>Efek audio</h2></div><span class="pill">DSP CHAIN</span></div>
+        <article class="panel">
+          <div class="panel-head"><div><h3>10-band equalizer</h3><p>Pengaturan frekuensi dari sub-bass sampai high air</p></div><button class="text-button" id="eq-flat">Flat EQ</button></div>
+          <div class="eq-preset-row" id="eq-presets"></div>
+          <div class="eq-sliders" id="eq-sliders"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Enhancement</h3><p>Penguatan bass, kejernihan vokal, dan kontrol kanal</p></div></div>
+          <div class="control-grid" id="enhance-controls"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Filter & isolator</h3><p>Pisahkan atau bentuk bagian tertentu dari audio</p></div></div>
+          <div class="choice-block"><label>MODE VOCAL / BASS ISOLATOR</label><div class="choice-row" id="isolator-choices"></div></div>
+          <div class="control-grid" id="filter-controls"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Acoustic space</h3><p>Karakter pantulan dan gema ruang</p></div></div>
+          <div class="room-presets" id="room-presets"></div>
+          <div class="control-grid" id="reverb-controls"></div>
+          <div class="file-row"><label for="ir-file">Custom impulse response (.wav)</label><input id="ir-file" type="file" accept="audio/wav,.wav" /><small id="ir-name">Belum ada IR khusus</small></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Karakter & output</h3><p>Tempo, pitch, kompresi, saturasi, dan volume</p></div></div>
+          <div class="control-grid" id="character-controls"></div>
+          <label class="switch-row"><span><b>Soft limiter</b><small>Menahan puncak agar tidak mudah clipping</small></span><input id="softLimiter" type="checkbox" checked /></label>
+        </article>
+      </section>
+
+      <section class="page" id="page-presets">
+        <div class="section-heading"><div><div class="eyebrow">QUICK SOUND PROFILES</div><h2>Preset studio</h2></div><span class="pill">READY TO APPLY</span></div>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Preset 8D bawaan</h3><p>Profil gerakan dan karakter audio siap pakai</p></div></div>
+          <div class="preset-list" id="builtin-presets"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Preset EQ</h3><p>Kurva equalizer cepat berdasarkan karakter musik</p></div></div>
+          <div class="preset-chip-grid" id="eq-preset-cards"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Preset saya</h3><p>Simpan konfigurasi khusus dan gunakan lagi kapan saja</p></div></div>
+          <div class="save-preset-row"><input id="preset-name" type="text" maxlength="36" placeholder="Nama preset baru" /><button class="btn-primary" id="save-preset">Simpan</button></div>
+          <div class="preset-list" id="saved-presets"><div class="empty-state">Belum ada preset tersimpan.</div></div>
+          <div class="json-actions"><button class="btn-soft" id="export-json">Ekspor JSON</button><button class="btn-soft" id="import-json">Impor JSON</button><input id="json-file" type="file" accept="application/json,.json" hidden /></div>
+        </article>
+      </section>
+
+      <section class="page" id="page-floating">
+        <div class="section-heading"><div><div class="eyebrow">QUICK ACCESS ANYWHERE</div><h2>Mode melayang</h2></div><span class="pill pill-green">ANDROID OVERLAY</span></div>
+        <article class="floating-hero panel">
+          <div class="floating-orb">8D</div>
+          <div><div class="eyebrow">KRUZEN FLOAT CONTROL</div><h3>Kontrol tetap di atas aplikasi lain.</h3><p>Aktifkan gelembung untuk mengganti preset, toggle 8D, atau mengontrol pemutaran ketika membuka aplikasi lain.</p></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Floating controls</h3><p>Perlu izin “Tampil di atas aplikasi lain” dari Android</p></div></div>
+          <label class="switch-row"><span><b>Gelembung kontrol</b><small>Toggle 8D, preset EQ, preset 8D, Play/Pause</small></span><input id="floatingBubble" type="checkbox" /></label>
+          <label class="switch-row"><span><b>Lirik mengambang</b><small>Overlay lirik tersinkron dari host player</small></span><input id="floatingLyrics" type="checkbox" /></label>
+          <div class="notice" id="floating-notice">Fitur overlay berjalan melalui Android native service. Pada preview web biasa, kontrol ini hanya dapat disiapkan.</div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><h3>Mode audio sistem</h3><p>Jalur pemrosesan audio global, bila didukung perangkat</p></div></div>
+          <div class="mode-card"><div><b>Universal 8D Capture</b><small>Capture audio aplikasi lain melalui MediaProjection (Android 10+ dan persetujuan pengguna).</small></div><button class="btn-primary" id="capture-toggle">Mulai Capture</button></div>
+          <div class="mode-card"><div><b>System Global EQ</b><small>DynamicsProcessing session 0; bergantung dukungan vendor/ROM.</small></div><label class="switch"><input id="globalEq" type="checkbox" /><span></span></label></div>
+          <p class="status-text" id="system-status">Mode audio sistem belum diaktifkan.</p>
+        </article>
+      </section>
+
+      <footer class="footer"><div class="footer-mark">KRUZENLAB</div><span>Spatial Audio Module · DEV BAGJA</span><span id="save-status">Pengaturan tersimpan lokal</span></footer>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+Sumber fitur dan algoritma: Kruzen-Spatial-Audio-Module.zip yang diekstrak dari Laguku-main (1).zip.
+Port UI: Kotlin Jetpack Compose MixerScreen/PathCanvas/MixerControls diganti ke HTML + CSS + JavaScript vanilla.
+Native DSP/audio: dipertahankan dari modul ekstraksi sebelumnya agar real-time processing dan layanan Android tetap native.
+Tidak memasukkan Chorus, Tremolo, Wah-Wah, Telephone/Radio.
+Build APK dan tes perangkat belum dijalankan.

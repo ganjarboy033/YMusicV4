@@ -1,0 +1,12 @@
+package dev.bagja.kruzenspatial
+
+import android.os.Bundle
+import com.getcapacitor.BridgeActivity
+import dev.bagja.spatialaudio.SpatialAudioPlugin
+
+class MainActivity : BridgeActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        registerPlugin(SpatialAudioPlugin::class.java)
+        super.onCreate(savedInstanceState)
+    }
+}
